@@ -1,0 +1,67 @@
+title: Web Application Directory and Path Traversal Scanning
+id: 2a4b6c8d-0e2f-4a6b-8c0d-2e4f6a8b0c2d
+status: experimental
+description: >
+  Detects systematic HTTP scanning activity targeting a web server: high volume
+  of 404 responses from a single source IP, requests to known sensitive paths
+  (/.env, /.git, /admin, /phpmyadmin, /backup), or use of known web scanner
+  user-agent strings (nikto, sqlmap, gobuster, dirbuster, masscan).
+  A combination of these signals strongly indicates automated reconnaissance.
+references:
+  - https://attack.mitre.org/techniques/T1595/002/
+  - https://attack.mitre.org/techniques/T1083/
+  - https://owasp.org/www-community/attacks/Path_Traversal
+author: Lev Averyanov
+date: 2026-05-27
+logsource:
+  product: webserver
+  service: nginx
+  category: access
+detection:
+  selection_404_flood:
+    http_status: 404
+    timeframe: 5m
+    condition: selection_404_flood | count() by source_ip > 30
+  selection_sensitive_paths:
+    request_path|contains:
+      - "/.env"
+      - "/.git"
+      - "/admin"
+      - "/phpmyadmin"
+      - "/backup"
+      - "/wp-admin"
+      - "/config"
+  selection_scanner_ua:
+    user_agent|contains:
+      - "sqlmap"
+      - "nikto"
+      - "nmap"
+      - "masscan"
+      - "gobuster"
+      - "dirbuster"
+  condition: >
+    selection_404_flood or
+    (selection_sensitive_paths and http_status in [200, 302]) or
+    selection_scanner_ua
+fields:
+  - source_ip
+  - request_path
+  - http_status
+  - user_agent
+  - timestamp
+falsepositives:
+  - Authorized penetration testing or bug bounty scanning
+  - Monitoring/uptime tools accessing known paths
+  - Broken internal links causing 404 flood
+level: medium
+tags:
+  - attack.reconnaissance
+  - attack.t1595
+  - attack.t1595.002
+  - attack.discovery
+  - attack.t1083
+
+# Lab implementation note:
+# Maps to rule_ids WEB_DIR_SCAN, SENSITIVE_PATH_ACCESS, and SUSPICIOUS_USER_AGENT
+# in app/rules/default_rules.yml. Detection thresholds and path lists are
+# configurable in the YAML rule file.

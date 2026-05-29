@@ -1,0 +1,53 @@
+title: Windows Failed Logons Followed by Account Creation
+id: 5c7e9f1a-3b5d-7f9a-1c3e-5f7a9b1c3e5f
+status: experimental
+description: >
+  Detects a pattern where multiple Windows failed logon events (Event ID 4625)
+  from the same host are followed by a new local account creation (Event ID 4720).
+  This sequence is a strong indicator of a successful credential attack that
+  resulted in the attacker creating a persistence backdoor account.
+  Also correlates with IAM changes in cloud audit logs following auth failures.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+  - https://attack.mitre.org/techniques/T1078/
+  - https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4720
+  - https://docs.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4625
+author: Lev Averyanov
+date: 2026-05-27
+logsource:
+  product: windows
+  service: security
+  category: authentication
+detection:
+  selection_failures:
+    EventID: 4625
+    timeframe: 30m
+    condition: selection_failures | count() by host > 3
+  selection_account_created:
+    EventID: 4720
+  condition: >
+    selection_failures and selection_account_created
+    within 60m on same host
+fields:
+  - host
+  - target_username
+  - source_ip
+  - caller_username
+  - timestamp
+falsepositives:
+  - System administrator creating an account after a mistyped password
+  - Automated provisioning system with misconfigured credentials
+  - Password policy testing in a lab environment
+level: high
+tags:
+  - attack.persistence
+  - attack.t1136
+  - attack.t1136.001
+  - attack.credential_access
+  - attack.t1078
+
+# Lab implementation note:
+# Maps to rule_id WIN_ACCOUNT_CREATED_AFTER_FAILURES in
+# app/rules/default_rules.yml. The detection engine correlates
+# EventID 4625 and 4720 from windows_security.jsonl log source.
+# min_failures threshold: 3. Severity: high. Score: 80.

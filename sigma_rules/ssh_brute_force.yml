@@ -1,0 +1,43 @@
+title: SSH Brute Force Attempts
+id: 8f3a1c2d-4e5b-6f7a-8b9c-0d1e2f3a4b5c
+status: experimental
+description: >
+  Detects multiple consecutive failed SSH authentication attempts from the same
+  source IP address within a short window. A high failure rate from a single IP
+  is a strong indicator of automated password guessing or credential stuffing.
+references:
+  - https://attack.mitre.org/techniques/T1110/001/
+  - https://www.cisa.gov/sites/default/files/publications/CISA_MS-ISAC_Ransomware%20Guide_S508C.pdf
+author: Lev Averyanov
+date: 2026-05-27
+logsource:
+  product: linux
+  service: sshd
+  category: authentication
+detection:
+  selection:
+    message|contains:
+      - "Failed password"
+      - "Invalid user"
+      - "authentication failure"
+  timeframe: 10m
+  condition: selection | count() by source_ip > 10
+fields:
+  - source_ip
+  - target_user
+  - timestamp
+falsepositives:
+  - Legitimate user with mistyped password (usually < 5 attempts)
+  - Authorized vulnerability scanner or penetration test
+  - Automated service with expired credentials
+level: medium
+tags:
+  - attack.credential_access
+  - attack.t1110
+  - attack.t1110.001
+
+# Lab implementation note:
+# This Sigma-style rule maps to rule_id SSH_BRUTE_FORCE in
+# app/rules/default_rules.yml. The lab implements the count-based threshold
+# logic in app/services/detection_engine.py. Thresholds: medium >= 10,
+# high >= 30, critical >= 100 failed attempts per source IP.

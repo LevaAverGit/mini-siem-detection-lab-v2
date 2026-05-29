@@ -1,0 +1,179 @@
+rules:
+
+  - rule_id: SSH_BRUTE_FORCE
+    name: SSH Brute Force
+    source_type: linux_auth
+    description: Multiple failed SSH login attempts from the same source IP
+    mitre_tactic: Credential Access
+    mitre_technique_id: T1110.001
+    mitre_technique_name: "Brute Force: Password Guessing"
+    mitre_mapping_confidence: direct
+    thresholds:
+      medium: 10
+      high: 30
+      critical: 100
+    scores:
+      medium: 40
+      high: 70
+      critical: 100
+    recommendation: >
+      Block the source IP at the firewall level. Review /etc/hosts.deny or
+      configure fail2ban. Verify that no privileged accounts were targeted.
+
+  - rule_id: SSH_BRUTE_FORCE_SUCCESS
+    name: Successful Login After SSH Brute Force
+    source_type: linux_auth
+    description: Same source IP had many failed SSH attempts followed by a successful login
+    mitre_tactic: Initial Access
+    mitre_technique_id: T1078
+    mitre_technique_name: Valid Accounts
+    mitre_mapping_confidence: approximate
+    min_failures: 5
+    severity: critical
+    score: 100
+    recommendation: >
+      Immediately review the authenticated session. Rotate credentials for the
+      affected account. Consider the system potentially compromised until verified.
+
+  - rule_id: WEB_DIR_SCAN
+    name: Web Directory Scanning
+    source_type: nginx_access
+    description: High volume of HTTP 404 responses from the same source IP
+    mitre_tactic: Reconnaissance
+    mitre_technique_id: T1595.002
+    mitre_technique_name: "Active Scanning: Vulnerability Scanning"
+    mitre_mapping_confidence: approximate
+    thresholds:
+      medium: 30
+      high: 80
+    scores:
+      medium: 40
+      high: 70
+    recommendation: >
+      Block the scanning IP at the WAF or firewall. Review what paths were
+      probed. Check if any sensitive paths returned 200 or 302 responses.
+
+  - rule_id: SENSITIVE_PATH_ACCESS
+    name: Sensitive Path Access
+    source_type: nginx_access
+    description: Access to known sensitive file or admin paths
+    mitre_tactic: Discovery
+    mitre_technique_id: T1083
+    mitre_technique_name: File and Directory Discovery
+    mitre_mapping_confidence: approximate
+    paths:
+      - /.env
+      - /.git
+      - /admin
+      - /phpmyadmin
+      - /backup
+      - /wp-admin
+      - /config
+    severity_200_302: high
+    severity_other: medium
+    scores:
+      high: 80
+      medium: 35
+    recommendation: >
+      Ensure sensitive paths are blocked at the web server level. If /.env or
+      /.git returned 200, treat as a data exposure incident. Rotate any
+      credentials that may have been exposed.
+
+  - rule_id: SUSPICIOUS_USER_AGENT
+    name: Suspicious Scanner User Agent
+    source_type: nginx_access
+    description: Request from a known security scanner or automation tool
+    mitre_tactic: Reconnaissance
+    mitre_technique_id: T1595
+    mitre_technique_name: Active Scanning
+    mitre_mapping_confidence: approximate
+    user_agents:
+      - sqlmap
+      - nikto
+      - nmap
+      - masscan
+      - gobuster
+      - dirbuster
+      - python-requests
+    severity_sensitive_path: high
+    severity_default: medium
+    scores:
+      high: 75
+      medium: 40
+    recommendation: >
+      Identify whether this is authorized penetration testing. If not,
+      block the IP and review all requests from this agent for data exposure.
+
+  - rule_id: WIN_ACCOUNT_CREATED_AFTER_FAILURES
+    name: Windows Account Created After Failed Logons
+    source_type: windows_security
+    description: User account creation (4720) on a host that had multiple failed logon events (4625)
+    mitre_tactic: Persistence
+    mitre_technique_id: T1136.001
+    mitre_technique_name: "Create Account: Local Account"
+    mitre_mapping_confidence: direct
+    min_failures: 3
+    severity: high
+    score: 80
+    recommendation: >
+      Verify the newly created account is authorized. If unexpected, disable it
+      immediately and investigate the authentication failures that preceded it.
+      Review Event 4672 for privileged access context.
+
+  - rule_id: CLOUD_SG_OPEN
+    name: Cloud Security Group Opened to 0.0.0.0/0
+    source_type: cloud_audit
+    description: A security group rule allows unrestricted inbound access from 0.0.0.0/0
+    mitre_tactic: Defense Evasion
+    mitre_technique_id: T1562.007
+    mitre_technique_name: "Impair Defenses: Disable or Modify Cloud Firewall"
+    mitre_mapping_confidence: approximate
+    dangerous_ports:
+      - 22
+      - 3389
+      - 3306
+      - 5432
+      - 27017
+    severity_db_ports: critical
+    severity_remote_ports: high
+    scores:
+      critical: 95
+      high: 80
+    db_ports:
+      - 3306
+      - 5432
+      - 27017
+    recommendation: >
+      Restrict the security group rule to known IP ranges. Remove any 0.0.0.0/0
+      rules on database or remote-access ports immediately. Audit who added the rule.
+
+  - rule_id: CLOUD_IAM_CHANGE_AFTER_FAILURE
+    name: IAM Policy Changed After Console Login Failure
+    source_type: cloud_audit
+    description: IAM policy was modified by a user or IP that had recent console login failures
+    mitre_tactic: Persistence
+    mitre_technique_id: T1098
+    mitre_technique_name: Account Manipulation
+    mitre_mapping_confidence: approximate
+    severity: high
+    score: 85
+    recommendation: >
+      Verify that the IAM change is authorized and expected. If the login failures
+      preceded the change from the same user or IP, treat as a possible credential
+      stuffing or account takeover. Review CloudTrail for full activity context.
+
+  - rule_id: MULTI_SOURCE_SUSPICIOUS_IP
+    name: Multi-Source Suspicious IP
+    source_type: all
+    description: Same source IP appears in suspicious events across two or more different log sources
+    mitre_tactic: Multiple
+    mitre_technique_id: Multiple
+    mitre_technique_name: Cross-source correlation indicator
+    mitre_mapping_confidence: approximate
+    min_sources: 2
+    severity: critical
+    score: 100
+    recommendation: >
+      This IP is active across multiple systems simultaneously. Block at the
+      perimeter immediately. Initiate incident response for all affected systems.
+      Preserve logs before they rotate.
