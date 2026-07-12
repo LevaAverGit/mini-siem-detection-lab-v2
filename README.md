@@ -190,6 +190,8 @@ The `sigma_rules/` directory contains Sigma-format YAML examples that map the la
 - Recommended response steps
 - False positive assessment
 
+`reports/web_exploit_incident_report.md` is a **captured live run** (`make demo`, then export) showing the `WEB_EXPLOIT_ATTEMPT` rule in action: a single IP (203.0.113.99) chaining SQL injection, path traversal, OS command injection, and Log4Shell against the web app, correlated into one CRITICAL incident mapped to MITRE T1190.
+
 ---
 
 ## Sample Incident Workflow
