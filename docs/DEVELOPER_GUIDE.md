@@ -44,7 +44,7 @@ app/
     report_service.py        generate_markdown_report(), generate_json_report()
     ingestion_service.py     ingest_file() orchestration helper
   rules/
-    default_rules.yml        9 detection rules with thresholds and metadata
+    default_rules.yml        10 detection rules with thresholds and metadata
 cli/
   main.py                    argparse CLI: ingest/demo/alerts/incidents
 tests/

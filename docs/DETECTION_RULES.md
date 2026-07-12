@@ -96,6 +96,25 @@ All rules are defined in `app/rules/default_rules.yml` and loaded at runtime.
 
 ---
 
+## WEB_EXPLOIT_ATTEMPT
+
+**Source:** nginx_access
+**Logic:** The request path is URL-decoded (WAF-style) and, together with the `User-Agent` header, matched against known web-exploit payload signatures.
+**Categories:** SQL injection, path traversal, Log4Shell (JNDI), OS command injection, cross-site scripting
+**Severity:** high
+**Score:** 85
+**Evidence:** Matched category, raw and decoded request path, User-Agent, HTTP status, source IP
+**Recommendation:** Confirm whether the request reached a vulnerable endpoint (2xx/5xx). Block the source IP at the WAF, review the targeted parameter, and check for signs of successful exploitation. For Log4Shell, verify affected Java services are patched and outbound LDAP/RMI is blocked.
+**False positives:** Authorized pentest/WAF tuning; legitimate paths that coincidentally contain a flagged substring. Always check authorization records.
+
+**MITRE ATT&CK mapping:**
+- Tactic: Initial Access
+- Technique: T1190 — Exploit Public-Facing Application
+- Confidence: direct
+- Notes: A known exploit payload in the request is a direct indicator of an attempt to exploit a public-facing application (T1190). The alert reflects an *attempt*; whether exploitation succeeded requires reviewing the response and downstream activity.
+
+---
+
 ## WIN_ACCOUNT_CREATED_AFTER_FAILURES
 
 **Source:** windows_security

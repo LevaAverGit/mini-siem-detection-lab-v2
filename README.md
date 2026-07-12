@@ -13,11 +13,11 @@ Built to demonstrate Python backend, security engineering, and SOC workflow skil
 
 - **Event pipeline design** — four log sources → unified normalized Event model → detection engine → alert/incident lifecycle
 - **FastAPI backend** — ingest, list, triage, and report endpoints with Pydantic v2 models throughout
-- **Detection rule engine** — 9 rules loaded from YAML, deterministic, no ML or external API
+- **Detection rule engine** — 10 rules loaded from YAML, deterministic, no ML or external API
 - **Incident grouping** — alerts correlated by shared source IP into incidents with timeline and entity tracking
 - **SQLite persistence** — schema-first init, per-test isolation via `tmp_path`
 - **CLI tool** — `ingest`, `demo`, `alerts list`, `incidents list`, `incidents report` commands
-- **124 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
+- **132 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
 - **Structured reporting** — Markdown and JSON incident reports
 
 ---
@@ -31,11 +31,12 @@ Log Sources (4)                   Detection Engine
   windows_sec.jsonl─► Normalize ──► ├── Web Dir Scanning
   cloud_audit.jsonl┘  (Event)    ├── Sensitive Path Access
                                   ├── Suspicious User Agent
+                                  ├── Web Exploit Attempt (T1190)
 POST /events/ingest               ├── Windows Account Created
   ↓                               ├── Cloud SG Opened to 0.0.0.0/0
 Normalization Service             ├── IAM Change After Login Failure
   ↓                               └── Multi-Source Suspicious IP
-Detection Engine (9 rules)
+Detection Engine (10 rules)
   ↓                              Storage
 Alert List                          SQLite (events / alerts / incidents)
   ↓
@@ -74,24 +75,25 @@ $ make demo
 ============================================================
 Mini SIEM Detection Lab — Demo Run
 ============================================================
-  Ingested  129 events from sample_logs/linux_auth.log
-  Ingested  118 events from sample_logs/nginx_access.log
+  Ingested  128 events from sample_logs/linux_auth.log
+  Ingested  139 events from sample_logs/nginx_access.log
   Ingested   12 events from sample_logs/windows_security.jsonl
   Ingested    8 events from sample_logs/cloud_audit.jsonl
 
-Total events ingested : 267
+Total events ingested : 287
 Total skipped         : 0
-Alerts generated      : 22
-Incidents created     : 8
+Alerts generated      : 121
+Incidents created     : 9
 
 Alert breakdown by severity:
-  CRITICAL :  5
-  HIGH     : 11
-  MEDIUM   :  6
+  CRITICAL:  3
+  HIGH    : 21
+  MEDIUM  : 97
 
 Incidents:
-  [INC-0001] [CRITICAL] Critical Incident — 203.0.113.99
-  [INC-0002] [HIGH]     High Incident — 192.0.2.150
+  [INC-0003] [CRITICAL] Critical Incident — 203.0.113.99
+  [INC-0008] [CRITICAL] Critical Incident — 203.0.113.10
+  [INC-0005] [HIGH]     High Incident — 198.51.100.77
   ...
 ```
 
@@ -153,6 +155,7 @@ python -m cli.main incidents report --id INC-0001 --format json
 | `WEB_DIR_SCAN` | nginx_access | >= 30/80 HTTP 404s from same IP | medium/high | T1595.002 |
 | `SENSITIVE_PATH_ACCESS` | nginx_access | Access to /.env, /.git, /admin, /phpmyadmin | medium/high | T1083 |
 | `SUSPICIOUS_USER_AGENT` | nginx_access | sqlmap, nikto, gobuster, masscan, dirbuster | medium/high | T1595 |
+| `WEB_EXPLOIT_ATTEMPT` | nginx_access | SQLi / traversal / Log4Shell / cmd-injection / XSS signatures in decoded path or UA | high | T1190 |
 | `WIN_ACCOUNT_CREATED_AFTER_FAILURES` | windows_security | 4720 follows multiple 4625 on same host | high | T1136.001 |
 | `CLOUD_SG_OPEN` | cloud_audit | SG rule 0.0.0.0/0 on port 22/3389/5432/3306 | high/critical | T1562.007 |
 | `CLOUD_IAM_CHANGE_AFTER_FAILURE` | cloud_audit | IAM policy change by user with recent login failures | high | T1098 |
@@ -170,6 +173,7 @@ The `sigma_rules/` directory contains Sigma-format YAML examples that map the la
 |---|---|---|
 | `sigma_rules/ssh_brute_force.yml` | SSH_BRUTE_FORCE | T1110.001 |
 | `sigma_rules/web_path_traversal_scan.yml` | WEB_DIR_SCAN, SENSITIVE_PATH_ACCESS, SUSPICIOUS_USER_AGENT | T1595.002, T1083, T1595 |
+| `sigma_rules/web_exploit_attempt.yml` | WEB_EXPLOIT_ATTEMPT | T1190 |
 | `sigma_rules/windows_failed_logons_account_creation.yml` | WIN_ACCOUNT_CREATED_AFTER_FAILURES | T1136.001, T1078 |
 
 > **Note:** These are Sigma-style examples for educational and portfolio purposes. They illustrate how custom detection rules can be expressed in an industry-standard format. The lab uses its own YAML rule loader (`app/rules/default_rules.yml`) rather than a full Sigma engine.
@@ -222,7 +226,7 @@ make test    # 124 tests
 | Test module | Coverage |
 |---|---|
 | `test_normalization.py` | Linux auth, Nginx, Windows, Cloud parsers; malformed lines; file-level ingestion |
-| `test_detection_engine.py` | All 9 rules; threshold boundaries; severity escalation; multi-source correlation |
+| `test_detection_engine.py` | All 10 rules; threshold boundaries; severity escalation; multi-source correlation |
 | `test_incident_grouping.py` | IP grouping; severity escalation; timeline; entity collection; score cap |
 | `test_storage_service.py` | Insert/list/update for events/alerts/incidents; DB isolation via `tmp_path` |
 | `test_api_events.py` | Health, ingest, list endpoints; source_type filter |
@@ -253,7 +257,7 @@ mini-siem-detection-lab/
 │   │   └── schemas.py             Event, Alert, Incident, Pydantic v2
 │   ├── services/
 │   │   ├── normalization_service.py   4 source parsers → unified Event
-│   │   ├── detection_engine.py        9 detection rules → Alert list
+│   │   ├── detection_engine.py        10 detection rules → Alert list
 │   │   ├── incident_grouping_service.py  Alert → Incident (by IP)
 │   │   ├── storage_service.py         SQLite CRUD
 │   │   ├── report_service.py          Markdown + JSON report generation

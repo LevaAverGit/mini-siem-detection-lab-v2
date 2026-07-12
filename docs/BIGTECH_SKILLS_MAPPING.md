@@ -10,7 +10,7 @@ Demonstrates junior/junior+ readiness for security tooling, SOC automation, and 
 | Testing discipline | 113 tests, ASGITransport, tmp_path DB isolation, 0 warnings | `tests/`, `docs/QUALITY_ASSURANCE.md` |
 | CI/CD | GitHub Actions: checkout, Python 3.11 setup, pytest, ruff | `.github/workflows/ci.yml` |
 | Observability thinking | Structured JSON logging, normalized event messages | `app/core/logging.py`, `normalized_message` field |
-| Security engineering | 9 detection rules, severity scoring, evidence, recommendations | `app/services/detection_engine.py` |
+| Security engineering | 10 detection rules, severity scoring, evidence, recommendations | `app/services/detection_engine.py` |
 | MITRE ATT&CK awareness | Rule-level MITRE tactic/technique mapping with direct/approximate confidence labels | `app/rules/default_rules.yml`, `docs/DETECTION_RULES.md` |
 | SOC workflow | Alert status lifecycle (new → triaged → escalated → closed), incident grouping | `app/api/routes_alerts.py`, `incident_grouping_service.py` |
 | Linux/logs | Linux auth log parser (regex), Nginx combined log parser | `normalization_service.py` |

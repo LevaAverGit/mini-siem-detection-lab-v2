@@ -104,6 +104,24 @@ rules:
       Identify whether this is authorized penetration testing. If not,
       block the IP and review all requests from this agent for data exposure.
 
+  - rule_id: WEB_EXPLOIT_ATTEMPT
+    name: Web Exploit Attempt
+    source_type: nginx_access
+    description: >
+      Request path or user agent contains a known web-exploit signature
+      (SQL injection, path traversal, Log4Shell/JNDI, command injection, or XSS)
+    mitre_tactic: Initial Access
+    mitre_technique_id: T1190
+    mitre_technique_name: Exploit Public-Facing Application
+    mitre_mapping_confidence: direct
+    severity: high
+    score: 85
+    recommendation: >
+      Confirm whether the request reached a vulnerable endpoint (check the 2xx/5xx
+      response). Block the source IP at the WAF, review the targeted parameter, and
+      look for signs of successful exploitation. For Log4Shell, verify that affected
+      Java services are patched and outbound LDAP/RMI is blocked.
+
   - rule_id: WIN_ACCOUNT_CREATED_AFTER_FAILURES
     name: Windows Account Created After Failed Logons
     source_type: windows_security

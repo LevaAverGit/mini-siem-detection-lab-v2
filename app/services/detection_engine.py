@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import urllib.parse
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -428,6 +430,68 @@ def _detect_multi_source_ip(
     return new_alerts
 
 
+# Web-exploit payload signatures, checked against the URL-decoded request path
+# (WAF-style normalization) and the User-Agent header.
+_WEB_EXPLOIT_SIGNATURES: list[tuple[str, re.Pattern]] = [
+    ("SQL Injection",
+     re.compile(r"(?i)(union\s+select|or\s+1\s*=\s*1|'\s*or\s*'1'\s*=\s*'1|information_schema|sleep\s*\(|benchmark\s*\()")),
+    ("Path Traversal",
+     re.compile(r"(?i)(\.\./|\.\.\\|/etc/passwd|/etc/shadow|boot\.ini|win\.ini)")),
+    ("Log4Shell (JNDI)",
+     re.compile(r"(?i)\$\{jndi:")),
+    ("Command Injection",
+     re.compile(r"(?i)([;|]\s*(cat|ls|id|whoami|uname|curl|wget|nc|bash|sh)\b|\$\(.*\)|`.*`)")),
+    ("Cross-Site Scripting",
+     re.compile(r"(?i)(<script\b|onerror\s*=|javascript:)")),
+]
+
+
+def _classify_web_exploit(text: str) -> str | None:
+    for label, pattern in _WEB_EXPLOIT_SIGNATURES:
+        if pattern.search(text):
+            return label
+    return None
+
+
+def _detect_web_exploit(events: list[Event], rule: dict) -> list[Alert]:
+    """Flags requests whose path or user agent carries a known web-exploit signature.
+
+    The request path is URL-decoded before matching (as a WAF would), so encoded
+    payloads such as ``%27%20OR%20%271%27%3D%271`` are still detected.
+    """
+    alerts: list[Alert] = []
+    for ev in events:
+        if ev.source_type != SourceType.nginx_access:
+            continue
+        path = ev.raw_event.get("path", "")
+        user_agent = ev.raw_event.get("user_agent", "")
+        decoded_path = urllib.parse.unquote_plus(path)
+        label = _classify_web_exploit(decoded_path) or _classify_web_exploit(user_agent)
+        if not label:
+            continue
+        alerts.append(
+            _make_alert(
+                rule=rule,
+                severity=AlertSeverity(rule["severity"]),
+                score=rule["score"],
+                event_ids=[ev.event_id],
+                source_ip=ev.source_ip,
+                username=ev.username,
+                title=f"Web Exploit Attempt: {label}",
+                description=f"{label} signature detected in request to {path}",
+                evidence=[
+                    f"Category: {label}",
+                    f"Request path: {path}",
+                    f"Decoded path: {decoded_path}",
+                    f"User-Agent: {user_agent}",
+                    f"HTTP status: {ev.status}",
+                    f"Source IP: {ev.source_ip}",
+                ],
+            )
+        )
+    return alerts
+
+
 def run_detections(events: list[Event], rules: dict[str, Any]) -> list[Alert]:
     alerts: list[Alert] = []
 
@@ -441,6 +505,8 @@ def run_detections(events: list[Event], rules: dict[str, Any]) -> list[Alert]:
         alerts.extend(_detect_sensitive_path(events, rules["SENSITIVE_PATH_ACCESS"]))
     if "SUSPICIOUS_USER_AGENT" in rules:
         alerts.extend(_detect_suspicious_user_agent(events, rules["SUSPICIOUS_USER_AGENT"]))
+    if "WEB_EXPLOIT_ATTEMPT" in rules:
+        alerts.extend(_detect_web_exploit(events, rules["WEB_EXPLOIT_ATTEMPT"]))
     if "WIN_ACCOUNT_CREATED_AFTER_FAILURES" in rules:
         alerts.extend(_detect_win_account_created(events, rules["WIN_ACCOUNT_CREATED_AFTER_FAILURES"]))
     if "CLOUD_SG_OPEN" in rules:
