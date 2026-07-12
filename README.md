@@ -1,6 +1,6 @@
 # Mini SIEM Detection Lab
 
-[![CI](https://github.com/LevaAverGit/mini-siem-detection-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/LevaAverGit/mini-siem-detection-lab/actions/workflows/ci.yml)
+[![CI](https://github.com/LevaAverGit/mini-siem-detection-lab-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/LevaAverGit/mini-siem-detection-lab-v2/actions/workflows/ci.yml)
 
 A lab-grade detection pipeline that simulates a SOC monitoring workflow:
 event source → log ingestion → normalization → detection rules → alerts → incident grouping → report → analyst playbook.
