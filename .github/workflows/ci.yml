@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -24,4 +28,47 @@ jobs:
         run: pytest tests/ -v
 
       - name: Run ruff lint (non-blocking)
-        run: ruff check app/ cli/ tests/ || true
+        run: |
+          pip install ruff
+          ruff check app/ cli/ tests/ || true
+
+  security:
+    # SAST/dependency/secret findings are surfaced in the GitHub Security tab (SARIF).
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install security tools
+        run: pip install "bandit[sarif]" semgrep pip-audit
+
+      - name: Bandit SAST (SARIF)
+        run: bandit -r app cli -f sarif -o bandit.sarif || true
+      - name: Upload Bandit SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bandit.sarif
+          category: bandit
+        continue-on-error: true
+
+      - name: Semgrep SAST (SARIF)
+        run: |
+          semgrep --config p/python --config p/owasp-top-ten \
+            --sarif --output semgrep.sarif || true
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+        continue-on-error: true
+
+      - name: Dependency audit (pip-audit, advisory)
+        run: pip-audit -r requirements.txt || true
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
