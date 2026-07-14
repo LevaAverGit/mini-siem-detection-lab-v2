@@ -175,6 +175,7 @@ The `sigma_rules/` directory contains Sigma-format YAML examples that map the la
 | `sigma_rules/web_path_traversal_scan.yml` | WEB_DIR_SCAN, SENSITIVE_PATH_ACCESS, SUSPICIOUS_USER_AGENT | T1595.002, T1083, T1595 |
 | `sigma_rules/web_exploit_attempt.yml` | WEB_EXPLOIT_ATTEMPT | T1190 |
 | `sigma_rules/windows_failed_logons_account_creation.yml` | WIN_ACCOUNT_CREATED_AFTER_FAILURES | T1136.001, T1078 |
+| `sigma_rules/cloud_security_group_open.yml` | CLOUD_SG_OPEN | T1562.007 |
 
 > **Note:** These are Sigma-style examples for educational and portfolio purposes. They illustrate how custom detection rules can be expressed in an industry-standard format. The lab uses its own YAML rule loader (`app/rules/default_rules.yml`) rather than a full Sigma engine.
 

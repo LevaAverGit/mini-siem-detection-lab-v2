@@ -1,0 +1,50 @@
+title: Cloud Security Group Opened to the Internet on Sensitive Ports
+id: c3e9a1d7-6b40-4f2e-a8c5-1d7b9e0f4a26
+status: experimental
+description: >
+  Detects a cloud security group / firewall rule that allows unrestricted inbound
+  access from 0.0.0.0/0 on remote-access or database ports (SSH 22, RDP 3389,
+  MySQL 3306, PostgreSQL 5432, MongoDB 27017). Exposing these ports to the whole
+  internet is a common precursor to brute force, exploitation, or data theft, and
+  may indicate an attempt to weaken network defences.
+references:
+  - https://attack.mitre.org/techniques/T1562/007/
+  - https://owasp.org/www-project-cloud-security/
+author: Lev Averyanov
+date: 2026-07-14
+logsource:
+  product: cloud
+  service: audit
+detection:
+  selection_open_cidr:
+    action: security_group_rule_created
+    cidr: "0.0.0.0/0"
+  selection_sensitive_ports:
+    port:
+      - 22
+      - 3389
+      - 3306
+      - 5432
+      - 27017
+  condition: selection_open_cidr and selection_sensitive_ports
+fields:
+  - username
+  - source_ip
+  - port
+  - cidr
+  - region
+  - timestamp
+falsepositives:
+  - Intentional public-facing services behind additional controls (rare for these ports)
+  - Automated infrastructure provisioning that is later tightened
+  - Break-glass changes during an incident
+level: high
+tags:
+  - attack.defense_evasion
+  - attack.t1562
+  - attack.t1562.007
+
+# Lab implementation note:
+# Maps to rule_id CLOUD_SG_OPEN in app/rules/default_rules.yml. Database ports
+# (3306/5432/27017) are scored critical and remote-access ports (22/3389) high
+# in the lab's detection engine.
