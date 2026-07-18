@@ -492,6 +492,56 @@ def _detect_web_exploit(events: list[Event], rule: dict) -> list[Alert]:
     return alerts
 
 
+def _detect_web_auth_brute_force(events: list[Event], rule: dict) -> list[Alert]:
+    """Flags repeated failed web logins (HTTP 401/403) to login endpoints per source IP."""
+    login_paths = rule.get("login_paths", [])
+    fail_statuses = {str(s) for s in rule.get("fail_statuses", ["401", "403"])}
+    failed_by_ip: dict[str, list[Event]] = defaultdict(list)
+    for ev in events:
+        if ev.source_type != SourceType.nginx_access:
+            continue
+        if ev.status not in fail_statuses:
+            continue
+        path = ev.raw_event.get("path", "")
+        if not any(path.startswith(p) for p in login_paths):
+            continue
+        if ev.source_ip:
+            failed_by_ip[ev.source_ip].append(ev)
+
+    thresholds = rule["thresholds"]
+    scores = rule["scores"]
+    alerts = []
+    for ip, evs in failed_by_ip.items():
+        count = len(evs)
+        if count >= thresholds["critical"]:
+            sev, sc = AlertSeverity.critical, scores["critical"]
+        elif count >= thresholds["high"]:
+            sev, sc = AlertSeverity.high, scores["high"]
+        elif count >= thresholds["medium"]:
+            sev, sc = AlertSeverity.medium, scores["medium"]
+        else:
+            continue
+        sample_paths = sorted({e.raw_event.get("path", "") for e in evs})[:5]
+        alerts.append(
+            _make_alert(
+                rule=rule,
+                severity=sev,
+                score=sc,
+                event_ids=[e.event_id for e in evs],
+                source_ip=ip,
+                username=None,
+                title=f"Web Login Brute Force from {ip} ({count} failed logins)",
+                description=f"{count} failed web authentication attempts from {ip} against login endpoints",
+                evidence=[
+                    f"{count} failed login responses ({'/'.join(sorted(fail_statuses))}) from {ip}",
+                    f"Targeted paths: {', '.join(sample_paths)}",
+                    f"Severity threshold reached: {sev.value} (>= {thresholds[sev.value]})",
+                ],
+            )
+        )
+    return alerts
+
+
 def run_detections(events: list[Event], rules: dict[str, Any]) -> list[Alert]:
     alerts: list[Alert] = []
 
@@ -507,6 +557,8 @@ def run_detections(events: list[Event], rules: dict[str, Any]) -> list[Alert]:
         alerts.extend(_detect_suspicious_user_agent(events, rules["SUSPICIOUS_USER_AGENT"]))
     if "WEB_EXPLOIT_ATTEMPT" in rules:
         alerts.extend(_detect_web_exploit(events, rules["WEB_EXPLOIT_ATTEMPT"]))
+    if "WEB_AUTH_BRUTE_FORCE" in rules:
+        alerts.extend(_detect_web_auth_brute_force(events, rules["WEB_AUTH_BRUTE_FORCE"]))
     if "WIN_ACCOUNT_CREATED_AFTER_FAILURES" in rules:
         alerts.extend(_detect_win_account_created(events, rules["WIN_ACCOUNT_CREATED_AFTER_FAILURES"]))
     if "CLOUD_SG_OPEN" in rules:

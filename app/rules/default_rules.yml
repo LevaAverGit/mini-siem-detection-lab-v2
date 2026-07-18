@@ -122,6 +122,38 @@ rules:
       look for signs of successful exploitation. For Log4Shell, verify that affected
       Java services are patched and outbound LDAP/RMI is blocked.
 
+  - rule_id: WEB_AUTH_BRUTE_FORCE
+    name: Web Application Login Brute Force
+    source_type: nginx_access
+    description: Repeated failed authentication (HTTP 401/403) against login endpoints from the same source IP
+    mitre_tactic: Credential Access
+    mitre_technique_id: T1110
+    mitre_technique_name: Brute Force
+    mitre_mapping_confidence: direct
+    login_paths:
+      - /login
+      - /api/login
+      - /admin/login
+      - /wp-login.php
+      - /signin
+      - /auth
+    fail_statuses:
+      - "401"
+      - "403"
+    thresholds:
+      medium: 5
+      high: 20
+      critical: 50
+    scores:
+      medium: 40
+      high: 70
+      critical: 95
+    recommendation: >
+      Rate-limit authentication endpoints and enforce account lockout or exponential
+      backoff. Enable CAPTCHA or MFA for repeated failures. Block the source IP if the
+      volume indicates automated credential stuffing, and check whether any attempt
+      returned a 200/302 (possible successful compromise).
+
   - rule_id: WIN_ACCOUNT_CREATED_AFTER_FAILURES
     name: Windows Account Created After Failed Logons
     source_type: windows_security
