@@ -1,0 +1,46 @@
+title: Web Application Login Brute Force
+id: 7c1e9a4b-2d6f-4a3e-9b8c-1f2a3b4c5d6e
+status: experimental
+description: >
+  Detects a high number of failed web authentication attempts (HTTP 401/403)
+  against known login endpoints from a single source IP within a short window.
+  This pattern indicates password brute forcing or credential stuffing against
+  the application login form or authentication API.
+references:
+  - https://attack.mitre.org/techniques/T1110/
+  - https://owasp.org/www-community/attacks/Credential_stuffing
+author: Lev Averyanov
+date: 2026-07-17
+logsource:
+  category: webserver
+detection:
+  selection:
+    c-uri|contains:
+      - '/login'
+      - '/api/login'
+      - '/admin/login'
+      - '/signin'
+      - '/auth'
+    sc-status:
+      - 401
+      - 403
+  timeframe: 5m
+  condition: selection | count() by c-ip > 20
+fields:
+  - c-ip
+  - c-uri
+  - sc-status
+falsepositives:
+  - User repeatedly mistyping a password (usually low volume)
+  - Shared corporate NAT egress IP with several users failing at once
+  - Monitoring or health-check bot hitting an authenticated endpoint
+level: high
+tags:
+  - attack.credential_access
+  - attack.t1110
+
+# Lab implementation note:
+# This Sigma-style rule maps to rule_id WEB_AUTH_BRUTE_FORCE in
+# app/rules/default_rules.yml. The lab counts HTTP 401/403 responses to login
+# paths per source IP. Thresholds: medium >= 5, high >= 20, critical >= 50
+# failed logins per source IP.
