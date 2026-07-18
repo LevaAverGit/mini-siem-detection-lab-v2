@@ -115,6 +115,24 @@ All rules are defined in `app/rules/default_rules.yml` and loaded at runtime.
 
 ---
 
+## WEB_AUTH_BRUTE_FORCE
+
+**Source:** nginx_access
+**Logic:** Count of HTTP 401/403 responses to known login endpoints (`/login`, `/api/login`, `/admin/login`, `/wp-login.php`, `/signin`, `/auth`) from the same source_ip.
+**Thresholds:** medium >= 5, high >= 20, critical >= 50
+**Scores:** medium = 40, high = 70, critical = 95
+**Evidence:** Failed-login count, targeted paths, threshold hit
+**Recommendation:** Rate-limit login endpoints, enforce lockout/backoff, enable MFA/CAPTCHA. Block automated source IPs and check for a trailing 200/302 (possible compromise).
+**False positives:** Users mistyping passwords (low volume), shared corporate NAT egress IPs, health-check bots hitting authenticated endpoints.
+
+**MITRE ATT&CK mapping:**
+- Tactic: Credential Access
+- Technique: T1110 — Brute Force
+- Confidence: direct
+- Notes: A high volume of failed web authentication (401/403) to login endpoints from one IP is a direct indicator of T1110 brute force / credential stuffing against the application layer. It is distinct from `SSH_BRUTE_FORCE`, which only sees OS-level auth logs. A `200`/`302` following the burst may indicate a successful guess and warrants account-takeover review.
+
+---
+
 ## WIN_ACCOUNT_CREATED_AFTER_FAILURES
 
 **Source:** windows_security

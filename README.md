@@ -16,11 +16,11 @@ Built to demonstrate Python backend, security engineering, and SOC workflow skil
 
 - **Event pipeline design** — four log sources → unified normalized Event model → detection engine → alert/incident lifecycle
 - **FastAPI backend** — ingest, list, triage, and report endpoints with Pydantic v2 models throughout
-- **Detection rule engine** — 10 rules loaded from YAML, deterministic, no ML or external API
+- **Detection rule engine** — 11 rules loaded from YAML, deterministic, no ML or external API
 - **Incident grouping** — alerts correlated by shared source IP into incidents with timeline and entity tracking
 - **SQLite persistence** — schema-first init, per-test isolation via `tmp_path`
 - **CLI tool** — `ingest`, `demo`, `alerts list`, `incidents list`, `incidents report` commands
-- **132 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
+- **139 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
 - **Structured reporting** — Markdown and JSON incident reports
 
 ---
@@ -35,11 +35,12 @@ Log Sources (4)                   Detection Engine
   cloud_audit.jsonl┘  (Event)    ├── Sensitive Path Access
                                   ├── Suspicious User Agent
                                   ├── Web Exploit Attempt (T1190)
+                                  ├── Web Login Brute Force (T1110)
 POST /events/ingest               ├── Windows Account Created
   ↓                               ├── Cloud SG Opened to 0.0.0.0/0
 Normalization Service             ├── IAM Change After Login Failure
   ↓                               └── Multi-Source Suspicious IP
-Detection Engine (10 rules)
+Detection Engine (11 rules)
   ↓                              Storage
 Alert List                          SQLite (events / alerts / incidents)
   ↓
@@ -159,6 +160,7 @@ python -m cli.main incidents report --id INC-0001 --format json
 | `SENSITIVE_PATH_ACCESS` | nginx_access | Access to /.env, /.git, /admin, /phpmyadmin | medium/high | T1083 |
 | `SUSPICIOUS_USER_AGENT` | nginx_access | sqlmap, nikto, gobuster, masscan, dirbuster | medium/high | T1595 |
 | `WEB_EXPLOIT_ATTEMPT` | nginx_access | SQLi / traversal / Log4Shell / cmd-injection / XSS signatures in decoded path or UA | high | T1190 |
+| `WEB_AUTH_BRUTE_FORCE` | nginx_access | >= 5/20/50 HTTP 401/403 to login endpoints from same IP | medium/high/critical | T1110 |
 | `WIN_ACCOUNT_CREATED_AFTER_FAILURES` | windows_security | 4720 follows multiple 4625 on same host | high | T1136.001 |
 | `CLOUD_SG_OPEN` | cloud_audit | SG rule 0.0.0.0/0 on port 22/3389/5432/3306 | high/critical | T1562.007 |
 | `CLOUD_IAM_CHANGE_AFTER_FAILURE` | cloud_audit | IAM policy change by user with recent login failures | high | T1098 |
@@ -177,6 +179,7 @@ The `sigma_rules/` directory contains Sigma-format YAML examples that map the la
 | `sigma_rules/ssh_brute_force.yml` | SSH_BRUTE_FORCE | T1110.001 |
 | `sigma_rules/web_path_traversal_scan.yml` | WEB_DIR_SCAN, SENSITIVE_PATH_ACCESS, SUSPICIOUS_USER_AGENT | T1595.002, T1083, T1595 |
 | `sigma_rules/web_exploit_attempt.yml` | WEB_EXPLOIT_ATTEMPT | T1190 |
+| `sigma_rules/web_auth_brute_force.yml` | WEB_AUTH_BRUTE_FORCE | T1110 |
 | `sigma_rules/windows_failed_logons_account_creation.yml` | WIN_ACCOUNT_CREATED_AFTER_FAILURES | T1136.001, T1078 |
 | `sigma_rules/cloud_security_group_open.yml` | CLOUD_SG_OPEN | T1562.007 |
 
@@ -226,13 +229,13 @@ The `sigma_rules/` directory contains Sigma-format YAML examples that map the la
 ## Tests
 
 ```bash
-make test    # 124 tests
+make test    # 139 tests
 ```
 
 | Test module | Coverage |
 |---|---|
 | `test_normalization.py` | Linux auth, Nginx, Windows, Cloud parsers; malformed lines; file-level ingestion |
-| `test_detection_engine.py` | All 10 rules; threshold boundaries; severity escalation; multi-source correlation |
+| `test_detection_engine.py` | All 11 rules; threshold boundaries; severity escalation; multi-source correlation |
 | `test_incident_grouping.py` | IP grouping; severity escalation; timeline; entity collection; score cap |
 | `test_storage_service.py` | Insert/list/update for events/alerts/incidents; DB isolation via `tmp_path` |
 | `test_api_events.py` | Health, ingest, list endpoints; source_type filter |
@@ -263,7 +266,7 @@ mini-siem-detection-lab/
 │   │   └── schemas.py             Event, Alert, Incident, Pydantic v2
 │   ├── services/
 │   │   ├── normalization_service.py   4 source parsers → unified Event
-│   │   ├── detection_engine.py        10 detection rules → Alert list
+│   │   ├── detection_engine.py        11 detection rules → Alert list
 │   │   ├── incident_grouping_service.py  Alert → Incident (by IP)
 │   │   ├── storage_service.py         SQLite CRUD
 │   │   ├── report_service.py          Markdown + JSON report generation
@@ -277,7 +280,7 @@ mini-siem-detection-lab/
 │   ├── nginx_access.log           118 synthetic Nginx access events
 │   ├── windows_security.jsonl     12 synthetic Windows Security events
 │   └── cloud_audit.jsonl          8 synthetic cloud audit events
-├── tests/                         124 tests
+├── tests/                         139 tests
 ├── docs/                          11 documentation files
 ├── .github/workflows/ci.yml       GitHub Actions CI
 ├── Makefile
