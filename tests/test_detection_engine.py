@@ -337,6 +337,55 @@ class TestSuspiciousUserAgent:
         assert len(ua_alerts) == 0
 
 
+class TestWebAuthBruteForce:
+    @pytest.fixture
+    def rules(self):
+        return load_rules(RULES_PATH)
+
+    def test_below_threshold_no_alert(self, rules):
+        events = [_nginx_event("/login", "401", "198.51.100.5", idx=i) for i in range(4)]
+        alerts = run_detections(events, rules)
+        wa = [a for a in alerts if a.rule_id == "WEB_AUTH_BRUTE_FORCE"]
+        assert len(wa) == 0
+
+    def test_medium_threshold(self, rules):
+        events = [_nginx_event("/login", "401", "198.51.100.6", idx=i) for i in range(5)]
+        alerts = run_detections(events, rules)
+        wa = [a for a in alerts if a.rule_id == "WEB_AUTH_BRUTE_FORCE"]
+        assert len(wa) == 1
+        assert wa[0].severity == AlertSeverity.medium
+
+    def test_high_threshold(self, rules):
+        events = [_nginx_event("/api/login", "401", "198.51.100.7", idx=i) for i in range(20)]
+        alerts = run_detections(events, rules)
+        wa = [a for a in alerts if a.rule_id == "WEB_AUTH_BRUTE_FORCE"]
+        assert wa[0].severity == AlertSeverity.high
+
+    def test_forbidden_status_counted(self, rules):
+        events = [_nginx_event("/login", "403", "198.51.100.8", idx=i) for i in range(6)]
+        alerts = run_detections(events, rules)
+        wa = [a for a in alerts if a.rule_id == "WEB_AUTH_BRUTE_FORCE"]
+        assert len(wa) == 1
+
+    def test_non_login_path_no_alert(self, rules):
+        events = [_nginx_event("/products", "401", "198.51.100.9", idx=i) for i in range(10)]
+        alerts = run_detections(events, rules)
+        wa = [a for a in alerts if a.rule_id == "WEB_AUTH_BRUTE_FORCE"]
+        assert len(wa) == 0
+
+    def test_successful_login_status_not_counted(self, rules):
+        events = [_nginx_event("/login", "200", "198.51.100.10", idx=i) for i in range(10)]
+        alerts = run_detections(events, rules)
+        wa = [a for a in alerts if a.rule_id == "WEB_AUTH_BRUTE_FORCE"]
+        assert len(wa) == 0
+
+    def test_mitre_technique_is_t1110(self, rules):
+        events = [_nginx_event("/login", "401", "198.51.100.11", idx=i) for i in range(6)]
+        alerts = run_detections(events, rules)
+        wa = [a for a in alerts if a.rule_id == "WEB_AUTH_BRUTE_FORCE"]
+        assert wa[0].mitre_technique_id == "T1110"
+
+
 class TestWindowsAccountCreation:
     @pytest.fixture
     def rules(self):
