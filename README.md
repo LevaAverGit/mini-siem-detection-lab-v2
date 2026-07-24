@@ -182,6 +182,7 @@ The `sigma_rules/` directory contains Sigma-format YAML examples that map the la
 | `sigma_rules/web_auth_brute_force.yml` | WEB_AUTH_BRUTE_FORCE | T1110 |
 | `sigma_rules/windows_failed_logons_account_creation.yml` | WIN_ACCOUNT_CREATED_AFTER_FAILURES | T1136.001, T1078 |
 | `sigma_rules/cloud_security_group_open.yml` | CLOUD_SG_OPEN | T1562.007 |
+| `sigma_rules/cloud_iam_change_after_failure.yml` | CLOUD_IAM_CHANGE_AFTER_FAILURE | T1098 |
 
 > **Note:** These are Sigma-style examples for educational and portfolio purposes. They illustrate how custom detection rules can be expressed in an industry-standard format. The lab uses its own YAML rule loader (`app/rules/default_rules.yml`) rather than a full Sigma engine.
 

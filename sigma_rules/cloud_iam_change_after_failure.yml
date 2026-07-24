@@ -1,0 +1,46 @@
+title: IAM Policy Changed After Console Login Failure
+id: 9d2b5e8a-3c7f-4b1d-a6e2-8f0c1a9d4b7e
+status: experimental
+description: >
+  Detects a cloud IAM policy modification performed by a user or from a source
+  IP that had recent failed console login attempts. A policy change following
+  login failures is consistent with an attacker who eventually authenticated
+  and is now escalating or maintaining access, or with credential stuffing
+  followed by account takeover.
+references:
+  - https://attack.mitre.org/techniques/T1098/
+  - https://owasp.org/www-project-cloud-security/
+author: Lev Averyanov
+date: 2026-07-25
+logsource:
+  product: cloud
+  service: audit
+detection:
+  selection_failure:
+    action: console_login
+    status: failure
+  selection_iam_change:
+    action: iam_policy_changed
+  condition: selection_failure and selection_iam_change | correlate by username or source_ip
+fields:
+  - username
+  - source_ip
+  - policy_name
+  - change_type
+  - target_user
+  - timestamp
+falsepositives:
+  - Legitimate password reset followed by an authorized IAM change
+  - Automated infrastructure-as-code pipeline reapplying policies after a
+    transient authentication failure
+  - Shared service account with expected retries
+level: high
+tags:
+  - attack.persistence
+  - attack.t1098
+
+# Lab implementation note:
+# Maps to rule_id CLOUD_IAM_CHANGE_AFTER_FAILURE in app/rules/default_rules.yml.
+# The lab correlates console_login failures with a subsequent iam_policy_changed
+# event by the same username or source_ip (see _detect_iam_change_after_failure
+# in app/services/detection_engine.py). Mapping confidence: approximate.
