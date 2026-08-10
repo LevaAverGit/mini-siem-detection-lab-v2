@@ -20,7 +20,7 @@ Built to demonstrate Python backend, security engineering, and SOC workflow skil
 - **Incident grouping** — alerts correlated by shared source IP into incidents with timeline and entity tracking
 - **SQLite persistence** — schema-first init, per-test isolation via `tmp_path`
 - **CLI tool** — `ingest`, `demo`, `alerts list`, `incidents list`, `incidents report` commands
-- **139 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
+- **182 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
 - **Structured reporting** — Markdown and JSON incident reports
 
 ---
@@ -230,7 +230,7 @@ The `sigma_rules/` directory contains Sigma-format YAML examples that map the la
 ## Tests
 
 ```bash
-make test    # 139 tests
+make test    # 182 tests
 ```
 
 | Test module | Coverage |
@@ -243,6 +243,7 @@ make test    # 139 tests
 | `test_api_alerts.py` | Alert list, status update, incidents list, report MD/JSON |
 | `test_cli.py` | Demo, ingest, report export |
 | `test_report_service.py` | Markdown sections, JSON structure, AI trace check |
+| `test_sigma_rules.py` | Sigma rule files parse; required fields, UUID `id`, valid level, detection condition, ATT&CK tags |
 
 ---
 
@@ -281,7 +282,7 @@ mini-siem-detection-lab/
 │   ├── nginx_access.log           118 synthetic Nginx access events
 │   ├── windows_security.jsonl     12 synthetic Windows Security events
 │   └── cloud_audit.jsonl          8 synthetic cloud audit events
-├── tests/                         139 tests
+├── tests/                         182 tests
 ├── docs/                          11 documentation files
 ├── .github/workflows/ci.yml       GitHub Actions CI
 ├── Makefile
