@@ -188,10 +188,10 @@ def _detect_sensitive_path(events: list[Event], rule: dict) -> list[Alert]:
         if not matched:
             continue
         if ev.status in ("200", "302"):
-            sev = AlertSeverity.high
+            sev = AlertSeverity(rule["severity_200_302"])
             sc = rule["scores"]["high"]
         else:
-            sev = AlertSeverity.medium
+            sev = AlertSeverity(rule["severity_other"])
             sc = rule["scores"]["medium"]
         alerts.append(
             _make_alert(
