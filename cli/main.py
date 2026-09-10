@@ -10,6 +10,7 @@ from app.db.database import init_db
 from app.models.schemas import SourceType
 from app.services.detection_engine import load_rules, run_detections
 from app.services.incident_grouping_service import group_alerts, reset_incident_counter
+from app.services.ingestion_service import ingest_file
 from app.services.normalization_service import normalize_file
 from app.services.report_service import generate_json_report, generate_markdown_report
 from app.services.storage_service import StorageService
@@ -29,23 +30,12 @@ def cmd_ingest(args: argparse.Namespace) -> None:
     rules_path = args.rules or settings.rules_path
     init_db(db_path)
 
-    storage = StorageService(db_path)
-    rules = load_rules(rules_path)
+    result = ingest_file(args.file, args.source, db_path, rules_path)
 
-    parse_result = normalize_file(args.file, args.source)
-    events = parse_result.events
-    storage.insert_events(events)
-
-    alerts = run_detections(events, rules)
-    storage.insert_alerts(alerts)
-
-    incidents = group_alerts(alerts, events)
-    storage.insert_incidents(incidents)
-
-    print(f"Events ingested : {len(events)}")
-    print(f"Skipped         : {parse_result.skipped_count}")
-    print(f"Alerts created  : {len(alerts)}")
-    print(f"Incidents created: {len(incidents)}")
+    print(f"Events ingested : {result.events_ingested}")
+    print(f"Skipped         : {result.skipped}")
+    print(f"Alerts created  : {result.alerts_created}")
+    print(f"Incidents created: {result.incidents_created}")
 
 
 def cmd_alerts_list(args: argparse.Namespace) -> None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.models.schemas import AlertStatus, AlertStatusUpdate
+from app.models.schemas import AlertStatusUpdate
 from app.services.storage_service import StorageService
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -40,8 +39,8 @@ def generate_markdown_report(
         "",
         "## Severity and Score",
         "",
-        f"| Severity | Score |",
-        f"|---|---|",
+        "| Severity | Score |",
+        "|---|---|",
         f"| {severity} | {score}/100 |",
         "",
         "---",
@@ -85,7 +84,7 @@ def generate_markdown_report(
         technique_name = alert.get("mitre_technique_name")
         confidence = alert.get("mitre_mapping_confidence")
         if tactic and technique_id:
-            lines.append(f"- **MITRE ATT&CK:**")
+            lines.append("- **MITRE ATT&CK:**")
             lines.append(f"  - Tactic: {tactic}")
             lines.append(f"  - Technique: {technique_id} — {technique_name}")
             lines.append(f"  - Mapping confidence: {confidence}")

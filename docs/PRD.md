@@ -9,14 +9,14 @@ In SOC and SIEM teams, a junior analyst needs to understand not just individual 
 Build a reproducible lab that demonstrates:
 - Unified event ingestion pipeline (4 sources)
 - Normalized event model
-- Rule-based detection engine (10 rules, YAML-configurable)
+- Rule-based detection engine (11 rules, YAML-configurable)
 - Alert generation with evidence and recommendations
 - Incident grouping by shared entity (IP, host)
 - FastAPI backend with SQLite persistence
 - CLI tool for ingestion, triage, and export
 - Synthetic log datasets covering Linux, Nginx, Windows, and Cloud
 - Markdown and JSON incident reports
-- pytest test suite (113 tests)
+- pytest test suite (183 tests)
 - GitHub Actions CI
 
 ## Non-Goals
@@ -37,10 +37,10 @@ Build a reproducible lab that demonstrates:
 | Python backend | FastAPI, services, Pydantic v2 |
 | API design | 9 endpoints with typed request/response |
 | Data modeling | Event / Alert / Incident with Pydantic v2 |
-| Testing discipline | 113 tests, ASGITransport, tmp_path isolation |
+| Testing discipline | 183 tests, ASGITransport, tmp_path isolation |
 | CI/CD | GitHub Actions CI |
 | Observability | Structured JSON logging, normalized event messages |
-| Security engineering | 10 detection rules, triage lifecycle |
+| Security engineering | 11 detection rules, triage lifecycle |
 | SOC workflow | Alert status transitions, incident grouping |
 | Linux/logs | linux_auth and nginx_access parsers |
 | Windows event awareness | Windows Security Event IDs (4624/4625/4672/4688/4720) |
@@ -63,10 +63,10 @@ Build a reproducible lab that demonstrates:
 ## Success Criteria
 
 - Project starts locally in under 5 minutes (`make install && make demo`)
-- All 113 tests pass with `make test`
+- All 183 tests pass with `make test`
 - CI passes on GitHub Actions
 - README clearly explains the SOC workflow
-- 10 detection rules implemented
+- 11 detection rules implemented
 - 4 log sources simulated
 - Markdown and JSON reports supported
 - No real external network required

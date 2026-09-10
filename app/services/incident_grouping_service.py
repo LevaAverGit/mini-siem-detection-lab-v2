@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from app.models.schemas import Alert, AlertSeverity, Event, Incident, InvolvedEntities, TimelineEntry
+from app.models.schemas import (
+    Alert,
+    AlertSeverity,
+    Event,
+    Incident,
+    InvolvedEntities,
+    TimelineEntry,
+)
 
 _SEVERITY_ORDER = {
     AlertSeverity.low: 0,
@@ -107,6 +113,12 @@ def _next_incident_id() -> str:
 def reset_incident_counter() -> None:
     global _incident_counter
     _incident_counter = 0
+
+
+def set_incident_counter(value: int) -> None:
+    """Continue numbering from an existing value (e.g. the DB's current maximum)."""
+    global _incident_counter
+    _incident_counter = value
 
 
 def group_alerts(alerts: list[Alert], events: list[Event]) -> list[Incident]:

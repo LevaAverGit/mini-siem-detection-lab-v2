@@ -237,16 +237,10 @@ def normalize_cloud_json(event: dict) -> Event | None:
         return None
 
 
-def normalize_file(path: str, source_type: str) -> ParseResult:
+def normalize_lines(lines: list[str], source_type: str) -> ParseResult:
     events: list[Event] = []
     skipped = 0
     errors = 0
-
-    try:
-        with open(path, encoding="utf-8") as f:
-            lines = f.readlines()
-    except OSError:
-        return ParseResult(events=[], skipped_count=0, error_count=1)
 
     for line in lines:
         line = line.strip()
@@ -263,7 +257,6 @@ def normalize_file(path: str, source_type: str) -> ParseResult:
             elif source_type == SourceType.cloud_audit:
                 ev = normalize_cloud_json(json.loads(line))
             else:
-                ev = None
                 skipped += 1
                 continue
 
@@ -275,3 +268,16 @@ def normalize_file(path: str, source_type: str) -> ParseResult:
             errors += 1
 
     return ParseResult(events=events, skipped_count=skipped, error_count=errors)
+
+
+def normalize_content(content: str, source_type: str) -> ParseResult:
+    return normalize_lines(content.splitlines(), source_type)
+
+
+def normalize_file(path: str, source_type: str) -> ParseResult:
+    try:
+        with open(path, encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return ParseResult(events=[], skipped_count=0, error_count=1)
+    return normalize_lines(content.splitlines(), source_type)

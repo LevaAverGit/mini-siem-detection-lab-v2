@@ -84,6 +84,33 @@ class TestCLIIngest:
         captured = capsys.readouterr()
         assert "Events ingested" in captured.out
 
+    def test_sequential_ingest_keeps_unique_incident_ids(self, tmp_path: Path):
+        # Ingesting sources one at a time (as the README workflow documents) runs
+        # each in a fresh process, so the incident counter starts at 0 every time.
+        # Incident ids must still not collide, or INSERT OR IGNORE drops incidents.
+        db_path = str(tmp_path / "sequential.db")
+        init_db(db_path)
+
+        import argparse
+        from cli.main import cmd_ingest
+        from app.models.schemas import SourceType
+        from app.services.storage_service import StorageService
+
+        sources = [
+            (SourceType.linux_auth, "sample_logs/linux_auth.log"),
+            (SourceType.nginx_access, "sample_logs/nginx_access.log"),
+            (SourceType.cloud_audit, "sample_logs/cloud_audit.jsonl"),
+        ]
+        for source, file in sources:
+            reset_incident_counter()  # emulate a fresh process per invocation
+            cmd_ingest(argparse.Namespace(
+                db=db_path, rules="app/rules/default_rules.yml", source=source, file=file,
+            ))
+
+        ids = [i["incident_id"] for i in StorageService(db_path).list_incidents()]
+        assert len(ids) == len(set(ids)), f"duplicate incident ids: {ids}"
+        assert len(ids) >= 5
+
 
 class TestCLIReport:
     def test_report_md_output(self, tmp_path: Path, capsys):

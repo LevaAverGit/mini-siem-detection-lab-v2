@@ -391,12 +391,13 @@ def _detect_multi_source_ip(
     """IPs that appear in alerts from 2+ different source types."""
     alert_sources_by_ip: dict[str, set[str]] = defaultdict(set)
     alert_ids_by_ip: dict[str, list[str]] = defaultdict(list)
+    event_index = {e.event_id: e for e in events}
 
     for alert in alerts_so_far:
         if not alert.source_ip:
             continue
         for eid in alert.event_ids:
-            ev = next((e for e in events if e.event_id == eid), None)
+            ev = event_index.get(eid)
             if ev:
                 alert_sources_by_ip[alert.source_ip].add(ev.source_type.value)
         alert_ids_by_ip[alert.source_ip].append(alert.alert_id)

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class SourceType(str, Enum):
@@ -63,7 +67,7 @@ class Alert(BaseModel):
     description: str
     evidence: list[str] = Field(default_factory=list)
     recommendation: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
     status: AlertStatus = AlertStatus.new
     mitre_tactic: str | None = None
     mitre_technique_id: str | None = None
@@ -95,7 +99,7 @@ class Incident(BaseModel):
     summary: str
     analyst_notes: str | None = None
     recommended_actions: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
     status: IncidentStatus = IncidentStatus.open
 
 

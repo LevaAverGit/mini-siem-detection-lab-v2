@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 
 from app.db.database import get_connection
 from app.models.schemas import Alert, AlertStatus, Event, Incident
@@ -182,6 +181,18 @@ class StorageService:
         for field in ("alert_ids", "involved_entities", "timeline", "recommended_actions"):
             result[field] = json.loads(result[field])
         return result
+
+    def max_incident_number(self) -> int:
+        """Highest numeric suffix among existing INC-xxxx ids, or 0 if none."""
+        with get_connection(self.db_path) as conn:
+            rows = conn.execute("SELECT incident_id FROM incidents").fetchall()
+        highest = 0
+        for r in rows:
+            try:
+                highest = max(highest, int(r["incident_id"].rsplit("-", 1)[-1]))
+            except (ValueError, TypeError):
+                continue
+        return highest
 
     def get_alerts_for_incident(self, alert_ids: list[str]) -> list[dict]:
         if not alert_ids:
