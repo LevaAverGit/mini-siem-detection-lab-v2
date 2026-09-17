@@ -188,6 +188,60 @@ All rules are defined in `app/rules/default_rules.yml` and loaded at runtime.
 
 ---
 
+## DB_AUTH_BRUTE_FORCE
+
+**Source:** postgres_audit
+**Logic:** Count of `db_auth_failed` events (PostgreSQL `password authentication failed`) from the same source_ip.
+**Thresholds:** medium >= 5, high >= 15, critical >= 40
+**Scores:** medium = 45, high = 75, critical = 100
+**Evidence:** Failure count, targeted accounts, databases, threshold hit
+**Recommendation:** Restrict database access in `pg_hba.conf` and at the network level. Check which accounts were targeted and rotate credentials if any attempt succeeded.
+**False positives:** An application with stale credentials after a password rotation, or a misconfigured connection pool, produces the same pattern from a known host. Check whether the source IP belongs to an application server before treating it as an attack.
+
+**MITRE ATT&CK mapping:**
+- Tactic: Credential Access
+- Technique: T1110.001 — Brute Force: Password Guessing
+- Confidence: direct
+- Notes: Thresholds are lower than for SSH deliberately. A database rarely faces internet-wide scanning, so a handful of failures from one address is already worth attention, whereas an SSH port on a public host sees that volume as background noise.
+
+---
+
+## DB_BRUTE_FORCE_SUCCESS
+
+**Source:** postgres_audit
+**Logic:** Same source_ip has >= 5 `db_auth_failed` events AND at least one `db_auth_success`.
+**Severity:** critical
+**Score:** 100
+**Evidence:** Failure count, account that was authorized
+**Recommendation:** Treat the database account as compromised until proven otherwise. Review the statements executed in that session, rotate credentials, and check whether new roles or grants followed.
+**False positives:** A human operator who mistyped a password several times before connecting. The distinguishing signal is the number of distinct accounts tried — a person retries one account, an attacker walks through several.
+
+**MITRE ATT&CK mapping:**
+- Tactic: Initial Access
+- Technique: T1078 — Valid Accounts
+- Confidence: approximate
+- Notes: The successful connection itself is indistinguishable from legitimate use; what raises it to critical is the sequence. Confirmation requires checking the session's activity, which is outside this rule's scope.
+
+---
+
+## DB_PRIVILEGE_CHANGE
+
+**Source:** postgres_audit
+**Logic:** A logged statement starting with GRANT, REVOKE, CREATE ROLE, CREATE USER, ALTER ROLE or ALTER USER. Severity escalates to critical when the statement contains `SUPERUSER` or `ALL PRIVILEGES`.
+**Severity:** high, critical on wide grants
+**Score:** 80, 95 on wide grants
+**Evidence:** Full statement, database, executing account and source IP
+**Recommendation:** Confirm the change against a change request. Grants outside a planned maintenance window deserve a direct check with the account owner; SUPERUSER and database-wide grants deserve one immediately.
+**False positives:** Routine work of a DBA and automated migrations both produce legitimate GRANT statements. This rule is deliberately noisy by design — privilege changes are cheap to verify and expensive to miss.
+
+**MITRE ATT&CK mapping:**
+- Tactic: Persistence
+- Technique: T1098 — Account Manipulation
+- Confidence: direct
+- Notes: Creating a role or widening privileges is the database-level equivalent of account manipulation. Detection depends on `log_statement` being enabled — without statement logging, this rule sees nothing, which is a deployment prerequisite rather than a detection gap.
+
+---
+
 ## MULTI_SOURCE_SUSPICIOUS_IP
 
 **Source:** all (cross-source)

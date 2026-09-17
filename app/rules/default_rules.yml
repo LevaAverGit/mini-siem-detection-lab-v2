@@ -212,6 +212,64 @@ rules:
       preceded the change from the same user or IP, treat as a possible credential
       stuffing or account takeover. Review CloudTrail for full activity context.
 
+  - rule_id: DB_AUTH_BRUTE_FORCE
+    name: Database Authentication Brute Force
+    source_type: postgres_audit
+    description: Multiple failed PostgreSQL authentication attempts from the same source IP
+    mitre_tactic: Credential Access
+    mitre_technique_id: T1110.001
+    mitre_technique_name: "Brute Force: Password Guessing"
+    mitre_mapping_confidence: direct
+    thresholds:
+      medium: 5
+      high: 15
+      critical: 40
+    scores:
+      medium: 45
+      high: 75
+      critical: 100
+    recommendation: >
+      Restrict database access to known application hosts in pg_hba.conf and at the
+      network level; a database should not accept authentication attempts from
+      arbitrary addresses. Check which accounts were targeted and rotate their
+      credentials if any attempt succeeded.
+
+  - rule_id: DB_BRUTE_FORCE_SUCCESS
+    name: Successful Database Login After Brute Force
+    source_type: postgres_audit
+    description: Same source IP had several failed database logins followed by an authorized connection
+    mitre_tactic: Initial Access
+    mitre_technique_id: T1078
+    mitre_technique_name: Valid Accounts
+    mitre_mapping_confidence: approximate
+    min_failures: 5
+    severity: critical
+    score: 100
+    recommendation: >
+      Treat the database account as compromised until proven otherwise. Review every
+      statement executed in that session, rotate the credentials and check whether new
+      roles or grants were created afterwards.
+
+  - rule_id: DB_PRIVILEGE_CHANGE
+    name: Database Privilege or Role Change
+    source_type: postgres_audit
+    description: GRANT, REVOKE or role management statement executed on the database
+    mitre_tactic: Persistence
+    mitre_technique_id: T1098
+    mitre_technique_name: Account Manipulation
+    mitre_mapping_confidence: direct
+    severity: high
+    score: 80
+    critical_keywords:
+      - SUPERUSER
+      - ALL PRIVILEGES
+    severity_critical_keyword: critical
+    score_critical_keyword: 95
+    recommendation: >
+      Confirm the change against a change request. Privilege grants outside a planned
+      maintenance window deserve a direct check with the account owner; SUPERUSER and
+      database-wide grants deserve one immediately.
+
   - rule_id: MULTI_SOURCE_SUSPICIOUS_IP
     name: Multi-Source Suspicious IP
     source_type: all

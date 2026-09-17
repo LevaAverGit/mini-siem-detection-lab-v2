@@ -16,6 +16,8 @@ This is a lab and portfolio project. The following limitations are intentional o
 - Correlation is based on exact source IP matching. No entity resolution or alias detection.
 - Multi-source correlation only triggers when alerts exist from prior single-source rules.
 - No threat intelligence enrichment (no IP reputation, no IOC feeds).
+- PostgreSQL detection assumes statement logging (`log_statement`) is enabled and that `log_line_prefix` carries user, database and client host. Without that configuration, privilege changes and source IPs never reach the parser — a deployment prerequisite, not something the rules can compensate for.
+- The PostgreSQL parser reads IPv4 client hosts only. A line whose `%h` holds an IPv6 address or a resolved hostname fails the prefix match and is skipped entirely, so those connections are absent from detection rather than merely missing an IP.
 
 ## Storage
 

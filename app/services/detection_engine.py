@@ -385,6 +385,130 @@ def _detect_iam_change_after_failure(events: list[Event], rule: dict) -> list[Al
     return alerts
 
 
+def _detect_db_auth_brute_force(events: list[Event], rule: dict) -> list[Alert]:
+    """Flags repeated failed database authentications per source IP."""
+    failed_by_ip: dict[str, list[Event]] = defaultdict(list)
+    for ev in events:
+        if ev.source_type != SourceType.postgres_audit:
+            continue
+        if ev.action == "db_auth_failed" and ev.source_ip:
+            failed_by_ip[ev.source_ip].append(ev)
+
+    thresholds = rule["thresholds"]
+    scores = rule["scores"]
+    alerts = []
+    for ip, evs in failed_by_ip.items():
+        count = len(evs)
+        if count >= thresholds["critical"]:
+            sev, sc = AlertSeverity.critical, scores["critical"]
+        elif count >= thresholds["high"]:
+            sev, sc = AlertSeverity.high, scores["high"]
+        elif count >= thresholds["medium"]:
+            sev, sc = AlertSeverity.medium, scores["medium"]
+        else:
+            continue
+        targeted = sorted({e.username for e in evs if e.username})
+        databases = sorted({str(e.raw_event.get("database")) for e in evs if e.raw_event.get("database")})
+        alerts.append(
+            _make_alert(
+                rule=rule,
+                severity=sev,
+                score=sc,
+                event_ids=[e.event_id for e in evs],
+                source_ip=ip,
+                username=targeted[0] if targeted else None,
+                title=f"Database Brute Force from {ip} ({count} failed logins)",
+                description=f"{count} failed PostgreSQL authentication attempts from {ip}",
+                evidence=[
+                    f"{count} failed database logins from {ip}",
+                    f"Targeted accounts: {', '.join(targeted) or 'unknown'}",
+                    f"Databases: {', '.join(databases) or 'unknown'}",
+                    f"Severity threshold reached: {sev.value} (>= {thresholds[sev.value]})",
+                ],
+            )
+        )
+    return alerts
+
+
+def _detect_db_brute_force_success(events: list[Event], rule: dict) -> list[Alert]:
+    """Flags an authorized database connection from an IP with recent failed logins."""
+    failed_by_ip: dict[str, list[Event]] = defaultdict(list)
+    success_by_ip: dict[str, list[Event]] = defaultdict(list)
+    for ev in events:
+        if ev.source_type != SourceType.postgres_audit or not ev.source_ip:
+            continue
+        if ev.action == "db_auth_failed":
+            failed_by_ip[ev.source_ip].append(ev)
+        elif ev.action == "db_auth_success":
+            success_by_ip[ev.source_ip].append(ev)
+
+    min_failures = rule.get("min_failures", 5)
+    alerts = []
+    for ip, success_evs in success_by_ip.items():
+        failures = failed_by_ip.get(ip, [])
+        if len(failures) < min_failures:
+            continue
+        usernames = list({e.username for e in success_evs if e.username})
+        alerts.append(
+            _make_alert(
+                rule=rule,
+                severity=AlertSeverity(rule["severity"]),
+                score=rule["score"],
+                event_ids=[e.event_id for e in failures] + [e.event_id for e in success_evs],
+                source_ip=ip,
+                username=usernames[0] if usernames else None,
+                title=f"Successful Database Login After Brute Force from {ip}",
+                description=(
+                    f"{len(failures)} failed database logins from {ip} followed by an "
+                    f"authorized connection"
+                ),
+                evidence=[
+                    f"{len(failures)} failed database logins from {ip}",
+                    f"Authorized connection for: {', '.join(usernames) or 'unknown'}",
+                ],
+            )
+        )
+    return alerts
+
+
+def _detect_db_privilege_change(events: list[Event], rule: dict) -> list[Alert]:
+    """Flags GRANT/REVOKE and role management statements, escalating on wide grants."""
+    keywords = [k.upper() for k in rule.get("critical_keywords", [])]
+    alerts = []
+    for ev in events:
+        if ev.source_type != SourceType.postgres_audit:
+            continue
+        if ev.action != "db_privilege_change":
+            continue
+        statement = str(ev.raw_event.get("statement", ""))
+        matched = next((k for k in keywords if k in statement.upper()), None)
+        if matched:
+            sev = AlertSeverity(rule.get("severity_critical_keyword", "critical"))
+            sc = rule.get("score_critical_keyword", rule["score"])
+        else:
+            sev = AlertSeverity(rule["severity"])
+            sc = rule["score"]
+        alerts.append(
+            _make_alert(
+                rule=rule,
+                severity=sev,
+                score=sc,
+                event_ids=[ev.event_id],
+                source_ip=ev.source_ip,
+                username=ev.username,
+                title=f"Database Privilege Change by {ev.username or 'unknown'}",
+                description=f"Privilege statement executed on {ev.raw_event.get('database', 'unknown')}",
+                evidence=[
+                    f"Statement: {statement}",
+                    f"Database: {ev.raw_event.get('database', 'unknown')}",
+                    f"Executed by: {ev.username or 'unknown'} from {ev.source_ip or 'unknown'}",
+                ]
+                + ([f"Escalated: statement contains {matched}"] if matched else []),
+            )
+        )
+    return alerts
+
+
 def _detect_multi_source_ip(
     events: list[Event], alerts_so_far: list[Alert], rule: dict
 ) -> list[Alert]:
@@ -566,6 +690,12 @@ def run_detections(events: list[Event], rules: dict[str, Any]) -> list[Alert]:
         alerts.extend(_detect_cloud_sg_open(events, rules["CLOUD_SG_OPEN"]))
     if "CLOUD_IAM_CHANGE_AFTER_FAILURE" in rules:
         alerts.extend(_detect_iam_change_after_failure(events, rules["CLOUD_IAM_CHANGE_AFTER_FAILURE"]))
+    if "DB_AUTH_BRUTE_FORCE" in rules:
+        alerts.extend(_detect_db_auth_brute_force(events, rules["DB_AUTH_BRUTE_FORCE"]))
+    if "DB_BRUTE_FORCE_SUCCESS" in rules:
+        alerts.extend(_detect_db_brute_force_success(events, rules["DB_BRUTE_FORCE_SUCCESS"]))
+    if "DB_PRIVILEGE_CHANGE" in rules:
+        alerts.extend(_detect_db_privilege_change(events, rules["DB_PRIVILEGE_CHANGE"]))
     if "MULTI_SOURCE_SUSPICIOUS_IP" in rules:
         alerts.extend(_detect_multi_source_ip(events, alerts, rules["MULTI_SOURCE_SUSPICIOUS_IP"]))
 

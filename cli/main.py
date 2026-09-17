@@ -106,6 +106,7 @@ def cmd_demo(args: argparse.Namespace) -> None:
         ("sample_logs/nginx_access.log", SourceType.nginx_access),
         ("sample_logs/windows_security.jsonl", SourceType.windows_security),
         ("sample_logs/cloud_audit.jsonl", SourceType.cloud_audit),
+        ("sample_logs/postgres_audit.log", SourceType.postgres_audit),
     ]
 
     all_events = []

@@ -4,6 +4,7 @@ from app.services.normalization_service import (
     normalize_nginx_line,
     normalize_windows_json,
     normalize_cloud_json,
+    normalize_postgres_line,
     normalize_file,
 )
 from app.models.schemas import SourceType
@@ -194,6 +195,82 @@ class TestCloudNormalization:
         assert ev is not None
 
 
+class TestPostgresNormalization:
+    def test_auth_failure(self):
+        line = (
+            '2026-01-10 09:12:03.412 UTC [2841] postgres@appdb 203.0.113.99 '
+            'FATAL:  password authentication failed for user "postgres"'
+        )
+        ev = normalize_postgres_line(line)
+        assert ev is not None
+        assert ev.action == "db_auth_failed"
+        assert ev.status == "failure"
+        assert ev.username == "postgres"
+        assert ev.source_ip == "203.0.113.99"
+        assert ev.source_type == SourceType.postgres_audit
+        assert ev.raw_event["database"] == "appdb"
+
+    def test_connection_authorized(self):
+        line = (
+            "2026-01-10 08:02:11.104 UTC [1902] deploy@appdb 192.0.2.50 "
+            "LOG:  connection authorized: user=deploy database=appdb"
+        )
+        ev = normalize_postgres_line(line)
+        assert ev is not None
+        assert ev.action == "db_auth_success"
+        assert ev.status == "success"
+        assert ev.username == "deploy"
+        assert ev.severity_hint == "info"
+
+    def test_grant_statement(self):
+        line = (
+            "2026-01-10 09:20:31.028 UTC [2902] dba@appdb 192.0.2.50 "
+            "LOG:  statement: GRANT SELECT ON orders TO reporting;"
+        )
+        ev = normalize_postgres_line(line)
+        assert ev is not None
+        assert ev.action == "db_privilege_change"
+        assert ev.raw_event["statement"].startswith("GRANT SELECT")
+        assert ev.severity_hint == "high"
+
+    def test_create_role_statement(self):
+        line = (
+            "2026-01-10 09:12:55.640 UTC [2871] postgres@appdb 203.0.113.99 "
+            "LOG:  statement: CREATE ROLE svc_report WITH SUPERUSER LOGIN PASSWORD 'redacted';"
+        )
+        ev = normalize_postgres_line(line)
+        assert ev is not None
+        assert ev.action == "db_privilege_change"
+        assert "SUPERUSER" in ev.raw_event["statement"]
+
+    def test_timestamp_is_parsed_from_the_line(self):
+        line = (
+            "2026-01-10 09:12:48.219 UTC [2871] postgres@appdb 203.0.113.99 "
+            "LOG:  connection authorized: user=postgres database=appdb"
+        )
+        ev = normalize_postgres_line(line)
+        assert ev is not None
+        assert ev.timestamp.year == 2026
+        assert ev.timestamp.hour == 9
+        assert ev.timestamp.minute == 12
+
+    def test_operational_noise_is_skipped(self):
+        line = "2026-01-10 08:15:00.881 UTC [1911] LOG:  checkpoint starting: time"
+        assert normalize_postgres_line(line) is None
+
+    def test_select_statement_is_not_a_privilege_change(self):
+        line = (
+            "2026-01-10 09:13:44.951 UTC [2871] postgres@appdb 203.0.113.99 "
+            "LOG:  statement: SELECT * FROM customers LIMIT 5000;"
+        )
+        assert normalize_postgres_line(line) is None
+
+    def test_empty_and_malformed_lines_return_none(self):
+        assert normalize_postgres_line("") is None
+        assert normalize_postgres_line("   ") is None
+        assert normalize_postgres_line("not a postgres log line at all") is None
+
+
 class TestNormalizeFile:
     def test_linux_auth_file(self):
         result = normalize_file("sample_logs/linux_auth.log", SourceType.linux_auth)
@@ -211,6 +288,12 @@ class TestNormalizeFile:
     def test_cloud_file(self):
         result = normalize_file("sample_logs/cloud_audit.jsonl", SourceType.cloud_audit)
         assert len(result.events) >= 6
+
+    def test_postgres_file(self):
+        result = normalize_file("sample_logs/postgres_audit.log", SourceType.postgres_audit)
+        assert len(result.events) >= 15
+        assert result.error_count == 0
+        assert result.skipped_count >= 3
 
     def test_missing_file_returns_empty(self):
         result = normalize_file("/nonexistent/file.log", SourceType.linux_auth)

@@ -12,14 +12,14 @@ produces a deterministic set of alerts. This design makes the pipeline easy to t
 
 ```
 ┌───────────────────────────────────────────────────────┐
-│                     Log Sources (4)                   │
-│  linux_auth.log | nginx_access.log | *.jsonl files    │
+│                     Log Sources (5)                   │
+│  linux_auth.log | nginx_access.log | *.jsonl | *.log  │
 └───────────────────────────┬───────────────────────────┘
                             │ raw text / JSONL
                             ▼
 ┌───────────────────────────────────────────────────────┐
 │              Normalization Service                    │
-│  4 parsers: regex (Linux/Nginx) + JSON (Win/Cloud)    │
+│  5 parsers: regex (Linux/Nginx/PG) + JSON (Win/Cloud) │
 │  Output: List[Event] — unified model, all sources     │
 └───────────────────────────┬───────────────────────────┘
                             │ List[Event]
@@ -27,7 +27,7 @@ produces a deterministic set of alerts. This design makes the pipeline easy to t
 ┌───────────────────────────────────────────────────────┐
 │              Detection Engine                         │
 │  Loads rules from default_rules.yml                   │
-│  9 rule functions → List[Alert]                       │
+│  14 rule functions → List[Alert]                      │
 │  Each alert: rule_id, severity, score, evidence       │
 └───────────────────────────┬───────────────────────────┘
                             │ List[Alert]

@@ -9,7 +9,7 @@ Junior-level framing: honest about scope, clear about trade-offs.
 
 > I built a lab-grade detection pipeline that mirrors a SOC monitoring workflow:
 > log ingestion → normalization → detection rules → alerts → incident grouping → reports.
-> Four log sources feed a unified Event model, 11 YAML-defined rules raise alerts,
+> Five log sources feed a unified Event model, 14 YAML-defined rules raise alerts,
 > each rule carries a MITRE ATT&CK mapping, alerts move through a lifecycle
 > (new → triaged → escalated → closed), and correlated alerts are grouped into
 > incidents by source IP with a Markdown/JSON report and an analyst playbook.
@@ -19,11 +19,11 @@ Junior-level framing: honest about scope, clear about trade-offs.
 
 ## 60-second technical explanation
 
-- **Log sources (4):** `linux_auth.log`, `nginx_access.log`, `windows_security.jsonl`,
-  `cloud_audit.jsonl` — a mix of line-based and JSON formats so the normalizer has to
-  handle more than one shape.
+- **Log sources (5):** `linux_auth.log`, `nginx_access.log`, `windows_security.jsonl`,
+  `cloud_audit.jsonl`, `postgres_audit.log` — a mix of line-based and JSON formats so the
+  normalizer has to handle more than one shape.
 - **Events → alerts:** the normalization service maps every raw line into a unified
-  `Event` model. The detection engine runs 11 rules (loaded from
+  `Event` model. The detection engine runs 14 rules (loaded from
   `app/rules/default_rules.yml`) against those events and emits `Alert` objects with a
   severity and score.
 - **Alerts → incidents:** the incident grouping service correlates alerts that share a
@@ -35,7 +35,7 @@ Junior-level framing: honest about scope, clear about trade-offs.
   Sigma-like YAML to show I understand the portable-rule format; it is not a full Sigma
   compilation engine.
 - **What to show:** `make demo` ingests the sample logs and prints a summary; the
-  FastAPI endpoints expose ingest/list/triage/report; 183 tests run with `make test`.
+  FastAPI endpoints expose ingest/list/triage/report; 200 tests run with `make test`.
 
 ---
 
@@ -47,7 +47,7 @@ Junior-level framing: honest about scope, clear about trade-offs.
 - Severity scoring and prioritization
 - MITRE ATT&CK awareness at the rule level, with honest confidence labelling
 - Structured Markdown/JSON reporting suitable for handoff
-- Test coverage (183 tests) and CI as part of the workflow
+- Test coverage (200 tests) and CI as part of the workflow
 
 ---
 
@@ -82,7 +82,7 @@ Junior-level framing: honest about scope, clear about trade-offs.
    alert is, but how raw logs become alerts, incidents, and a report an analyst can act on.
 
 2. **How does detection work?**
-   The engine loads 11 rules from YAML and runs them over normalized events. Each rule
+   The engine loads 14 rules from YAML and runs them over normalized events. Each rule
    has explicit thresholds (e.g. failed-login count) and produces a scored alert.
 
 3. **How do you reduce false positives?**
@@ -110,7 +110,7 @@ Junior-level framing: honest about scope, clear about trade-offs.
    and running the Sigma rules through a real Sigma backend.
 
 9. **How did you test it?**
-   183 pytest tests — unit tests per service, API tests through `httpx.ASGITransport`,
+   200 pytest tests — unit tests per service, API tests through `httpx.ASGITransport`,
    and per-test SQLite isolation via `tmp_path`.
 
 10. **What was the hardest part?**

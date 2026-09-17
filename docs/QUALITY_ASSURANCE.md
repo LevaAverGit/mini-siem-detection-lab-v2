@@ -4,8 +4,8 @@
 
 | Category | Tests | Notes |
 |---|---|---|
-| Normalization | 26 | Linux auth, Nginx, Windows, Cloud parsers; malformed lines; file-level ingestion |
-| Detection engine | 47 | All 11 rules; threshold boundaries; severity escalation; multi-source correlation |
+| Normalization | 34 | Linux auth, Nginx, Windows, Cloud, PostgreSQL parsers; malformed lines; file-level ingestion |
+| Detection engine | 56 | All 14 rules; threshold boundaries; severity escalation; multi-source correlation |
 | Incident grouping | 9 | IP grouping; severity escalation; timeline; entity collection; score cap |
 | Storage service | 15 | Insert/list/update; DB isolation via tmp_path; incident-id numbering |
 | API (events) | 8 | Health, ingest, list; filter by source_type |
@@ -13,7 +13,7 @@
 | CLI | 6 | Demo, ingest, report export; sequential-ingest incident-id uniqueness |
 | Report service | 16 | Markdown sections, JSON structure, no-AI-trace check |
 | Sigma rules | 43 | Sigma files parse; required fields, UUID id, valid level, detection condition, ATT&CK tags |
-| **Total** | **183** | |
+| **Total** | **200** | |
 
 ## Test Patterns
 

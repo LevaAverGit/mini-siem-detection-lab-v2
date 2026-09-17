@@ -614,3 +614,102 @@ class TestWebExploitDetection:
         web = self._alerts("/download?file=../../etc/passwd", rules)
         assert web[0].mitre_technique_id == "T1190"
         assert rules["WEB_EXPLOIT_ATTEMPT"]["mitre_mapping_confidence"] == "direct"
+
+
+def _postgres_event(
+    action: str,
+    source_ip: str,
+    username: str = "postgres",
+    idx: int = 0,
+    statement: str | None = None,
+    database: str = "appdb",
+) -> Event:
+    raw: dict = {"line": f"test line for {action}", "pid": "2841", "database": database}
+    if statement:
+        raw["statement"] = statement
+    status = "failure" if action == "db_auth_failed" else "success"
+    return Event(
+        event_id=f"pg-{action}-{idx}",
+        timestamp=datetime.now(timezone.utc),
+        source_type=SourceType.postgres_audit,
+        source_host="postgres",
+        source_ip=source_ip,
+        username=username,
+        action=action,
+        status=status,
+        raw_event=raw,
+        normalized_message=f"{action} by {username} from {source_ip}",
+    )
+
+
+class TestDatabaseRules:
+    @pytest.fixture()
+    def rules(self):
+        return load_rules(RULES_PATH)
+
+    def _alerts(self, events, rules, rule_id):
+        return [a for a in run_detections(events, rules) if a.rule_id == rule_id]
+
+    def test_brute_force_below_threshold_is_silent(self, rules):
+        events = [_postgres_event("db_auth_failed", "203.0.113.77", idx=i) for i in range(4)]
+        assert self._alerts(events, rules, "DB_AUTH_BRUTE_FORCE") == []
+
+    def test_brute_force_medium_at_threshold(self, rules):
+        events = [_postgres_event("db_auth_failed", "203.0.113.77", idx=i) for i in range(5)]
+        alerts = self._alerts(events, rules, "DB_AUTH_BRUTE_FORCE")
+        assert len(alerts) == 1
+        assert alerts[0].severity == AlertSeverity.medium
+        assert alerts[0].mitre_technique_id == "T1110.001"
+
+    def test_brute_force_escalates_to_high(self, rules):
+        events = [_postgres_event("db_auth_failed", "203.0.113.77", idx=i) for i in range(15)]
+        alerts = self._alerts(events, rules, "DB_AUTH_BRUTE_FORCE")
+        assert alerts[0].severity == AlertSeverity.high
+
+    def test_success_after_failures_is_critical(self, rules):
+        events = [_postgres_event("db_auth_failed", "203.0.113.99", idx=i) for i in range(6)]
+        events.append(_postgres_event("db_auth_success", "203.0.113.99", idx=99))
+        alerts = self._alerts(events, rules, "DB_BRUTE_FORCE_SUCCESS")
+        assert len(alerts) == 1
+        assert alerts[0].severity == AlertSeverity.critical
+        assert alerts[0].mitre_technique_id == "T1078"
+
+    def test_success_without_failures_is_silent(self, rules):
+        events = [_postgres_event("db_auth_success", "192.0.2.50")]
+        assert self._alerts(events, rules, "DB_BRUTE_FORCE_SUCCESS") == []
+
+    def test_plain_grant_is_high(self, rules):
+        events = [
+            _postgres_event(
+                "db_privilege_change",
+                "192.0.2.50",
+                username="dba",
+                statement="GRANT SELECT ON orders TO reporting;",
+            )
+        ]
+        alerts = self._alerts(events, rules, "DB_PRIVILEGE_CHANGE")
+        assert len(alerts) == 1
+        assert alerts[0].severity == AlertSeverity.high
+        assert alerts[0].mitre_technique_id == "T1098"
+
+    def test_superuser_grant_escalates_to_critical(self, rules):
+        events = [
+            _postgres_event(
+                "db_privilege_change",
+                "203.0.113.99",
+                statement="CREATE ROLE svc_report WITH SUPERUSER LOGIN PASSWORD 'redacted';",
+            )
+        ]
+        alerts = self._alerts(events, rules, "DB_PRIVILEGE_CHANGE")
+        assert alerts[0].severity == AlertSeverity.critical
+        assert any("SUPERUSER" in e for e in alerts[0].evidence)
+
+    def test_database_activity_joins_multi_source_correlation(self, rules):
+        ip = "203.0.113.99"
+        events = [_linux_event("ssh_failed_password", ip, username="root") for _ in range(10)]
+        for i, ev in enumerate(events):
+            ev.event_id = f"linux-{i}"
+        events += [_postgres_event("db_auth_failed", ip, idx=i) for i in range(6)]
+        multi = self._alerts(events, rules, "MULTI_SOURCE_SUSPICIOUS_IP")
+        assert len(multi) == 1
+        assert "postgres_audit" in multi[0].description

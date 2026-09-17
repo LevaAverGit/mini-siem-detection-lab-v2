@@ -16,6 +16,7 @@ class SourceType(str, Enum):
     nginx_access = "nginx_access"
     windows_security = "windows_security"
     cloud_audit = "cloud_audit"
+    postgres_audit = "postgres_audit"
 
 
 class AlertSeverity(str, Enum):

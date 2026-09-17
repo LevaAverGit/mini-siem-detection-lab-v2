@@ -31,6 +31,24 @@ _RE_NGINX = re.compile(
 )
 _NGINX_TIMESTAMP_FMT = "%d/%b/%Y:%H:%M:%S %z"
 
+# PostgreSQL server log, log_line_prefix = '%m [%p] %q%u@%d %h '
+# Example: 2026-01-10 09:12:03.412 UTC [2841] postgres@appdb 203.0.113.99 FATAL:  password ...
+_RE_PG_PREFIX = re.compile(
+    r"^(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:\.\d+)?\s+\S+\s+\[(?P<pid>\d+)\]\s+"
+    r"(?:(?P<user>[^@\s]+)@(?P<db>\S+)\s+)?"
+    r"(?:(?P<host>\d{1,3}(?:\.\d{1,3}){3})\s+)?"
+    r"(?P<level>[A-Z]+):\s+(?P<message>.*)$"
+)
+_PG_TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S"
+_RE_PG_AUTH_FAILED = re.compile(r'^password authentication failed for user "([^"]+)"')
+_RE_PG_CONN_AUTHORIZED = re.compile(
+    r"^connection authorized:\s+user=(\S+?)(?:\s+database=(\S+?))?(?:\s|$)"
+)
+_RE_PG_PRIVILEGE = re.compile(
+    r"^statement:\s+((?:GRANT|REVOKE|CREATE\s+ROLE|CREATE\s+USER|ALTER\s+ROLE|ALTER\s+USER)\b.*)",
+    re.IGNORECASE,
+)
+
 
 def _parse_linux_timestamp(ts_str: str) -> datetime:
     current_year = datetime.now().year
@@ -237,6 +255,101 @@ def normalize_cloud_json(event: dict) -> Event | None:
         return None
 
 
+def _parse_pg_timestamp(ts_str: str) -> datetime:
+    try:
+        return datetime.strptime(ts_str.strip(), _PG_TIMESTAMP_FMT).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return datetime.now(timezone.utc)
+
+
+def normalize_postgres_line(line: str) -> Event | None:
+    """Normalize one PostgreSQL server log line into an Event.
+
+    Recognized events: failed password authentication, authorized connection and
+    privilege-granting statements (GRANT/REVOKE, role creation and modification).
+    Operational noise such as checkpoints or autovacuum returns None, so the
+    ingestion counter reports it as skipped rather than as a parse error.
+    """
+    line = line.strip()
+    if not line:
+        return None
+
+    m = _RE_PG_PREFIX.match(line)
+    if not m:
+        return None
+
+    message = m.group("message")
+    database = m.group("db")
+    source_ip = m.group("host")
+    ts = _parse_pg_timestamp(m.group("ts"))
+    raw: dict[str, object] = {"line": line, "pid": m.group("pid")}
+    if database:
+        raw["database"] = database
+
+    failed = _RE_PG_AUTH_FAILED.match(message)
+    if failed:
+        user = failed.group(1)
+        return Event(
+            event_id=str(uuid.uuid4()),
+            timestamp=ts,
+            source_type=SourceType.postgres_audit,
+            source_host="postgres",
+            source_ip=source_ip,
+            username=user,
+            action="db_auth_failed",
+            status="failure",
+            raw_event=raw,
+            normalized_message=(
+                f"PostgreSQL authentication failed for {user} from {source_ip or 'unknown'}"
+            ),
+            severity_hint="medium",
+        )
+
+    authorized = _RE_PG_CONN_AUTHORIZED.match(message)
+    if authorized:
+        user = authorized.group(1) or m.group("user")
+        db = authorized.group(2) or database
+        if db:
+            raw["database"] = db
+        return Event(
+            event_id=str(uuid.uuid4()),
+            timestamp=ts,
+            source_type=SourceType.postgres_audit,
+            source_host="postgres",
+            source_ip=source_ip,
+            username=user,
+            action="db_auth_success",
+            status="success",
+            raw_event=raw,
+            normalized_message=(
+                f"PostgreSQL connection authorized for {user} from {source_ip or 'unknown'}"
+            ),
+            severity_hint="info",
+        )
+
+    privilege = _RE_PG_PRIVILEGE.match(message)
+    if privilege:
+        statement = privilege.group(1).strip()
+        raw["statement"] = statement
+        return Event(
+            event_id=str(uuid.uuid4()),
+            timestamp=ts,
+            source_type=SourceType.postgres_audit,
+            source_host="postgres",
+            source_ip=source_ip,
+            username=m.group("user"),
+            action="db_privilege_change",
+            status="success",
+            raw_event=raw,
+            normalized_message=(
+                f"PostgreSQL privilege statement by {m.group('user') or 'unknown'}: {statement}"
+            ),
+            severity_hint="high",
+        )
+
+    return None
+
+
 def normalize_lines(lines: list[str], source_type: str) -> ParseResult:
     events: list[Event] = []
     skipped = 0
@@ -256,6 +369,8 @@ def normalize_lines(lines: list[str], source_type: str) -> ParseResult:
                 ev = normalize_windows_json(json.loads(line))
             elif source_type == SourceType.cloud_audit:
                 ev = normalize_cloud_json(json.loads(line))
+            elif source_type == SourceType.postgres_audit:
+                ev = normalize_postgres_line(line)
             else:
                 skipped += 1
                 continue

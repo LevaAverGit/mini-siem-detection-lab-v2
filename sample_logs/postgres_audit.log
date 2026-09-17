@@ -1,0 +1,22 @@
+2026-01-10 08:02:11.104 UTC [1902] deploy@appdb 192.0.2.50 LOG:  connection authorized: user=deploy database=appdb
+2026-01-10 08:02:11.310 UTC [1902] deploy@appdb 192.0.2.50 LOG:  statement: SELECT count(*) FROM orders;
+2026-01-10 08:15:00.881 UTC [1911] LOG:  checkpoint starting: time
+2026-01-10 08:15:04.223 UTC [1911] LOG:  checkpoint complete: wrote 412 buffers (2.5%)
+2026-01-10 08:40:19.552 UTC [1950] reporting@appdb 192.0.2.61 LOG:  connection authorized: user=reporting database=appdb
+2026-01-10 09:11:58.004 UTC [2837] postgres@appdb 203.0.113.99 FATAL:  password authentication failed for user "postgres"
+2026-01-10 09:12:03.412 UTC [2841] postgres@appdb 203.0.113.99 FATAL:  password authentication failed for user "postgres"
+2026-01-10 09:12:09.730 UTC [2845] postgres@appdb 203.0.113.99 FATAL:  password authentication failed for user "postgres"
+2026-01-10 09:12:16.118 UTC [2849] admin@appdb 203.0.113.99 FATAL:  password authentication failed for user "admin"
+2026-01-10 09:12:22.905 UTC [2853] admin@appdb 203.0.113.99 FATAL:  password authentication failed for user "admin"
+2026-01-10 09:12:29.447 UTC [2858] backup_svc@appdb 203.0.113.99 FATAL:  password authentication failed for user "backup_svc"
+2026-01-10 09:12:35.802 UTC [2862] backup_svc@appdb 203.0.113.99 FATAL:  password authentication failed for user "backup_svc"
+2026-01-10 09:12:41.376 UTC [2866] postgres@appdb 203.0.113.99 FATAL:  password authentication failed for user "postgres"
+2026-01-10 09:12:48.219 UTC [2871] postgres@appdb 203.0.113.99 LOG:  connection authorized: user=postgres database=appdb
+2026-01-10 09:12:55.640 UTC [2871] postgres@appdb 203.0.113.99 LOG:  statement: CREATE ROLE svc_report WITH SUPERUSER LOGIN PASSWORD 'redacted';
+2026-01-10 09:13:02.187 UTC [2871] postgres@appdb 203.0.113.99 LOG:  statement: GRANT ALL PRIVILEGES ON DATABASE appdb TO svc_report;
+2026-01-10 09:13:44.951 UTC [2871] postgres@appdb 203.0.113.99 LOG:  statement: SELECT * FROM customers LIMIT 5000;
+2026-01-10 09:20:07.665 UTC [2902] dba@appdb 192.0.2.50 LOG:  connection authorized: user=dba database=appdb
+2026-01-10 09:20:31.028 UTC [2902] dba@appdb 192.0.2.50 LOG:  statement: GRANT SELECT ON orders TO reporting;
+2026-01-10 09:44:12.777 UTC [2955] LOG:  automatic vacuum of table "appdb.public.orders": index scans: 1
+2026-01-10 10:05:53.310 UTC [3011] reporting@appdb 198.51.100.50 FATAL:  password authentication failed for user "reporting"
+2026-01-10 10:06:01.884 UTC [3015] reporting@appdb 198.51.100.50 FATAL:  password authentication failed for user "reporting"
