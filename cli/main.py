@@ -40,6 +40,7 @@ def cmd_ingest(args: argparse.Namespace) -> None:
 
 def cmd_alerts_list(args: argparse.Namespace) -> None:
     db_path = args.db or settings.db_path
+    init_db(db_path)
     storage = StorageService(db_path)
     alerts = storage.list_alerts(
         status=getattr(args, "status", None),
@@ -54,6 +55,7 @@ def cmd_alerts_list(args: argparse.Namespace) -> None:
 
 def cmd_incidents_list(args: argparse.Namespace) -> None:
     db_path = args.db or settings.db_path
+    init_db(db_path)
     storage = StorageService(db_path)
     incidents = storage.list_incidents(
         status=getattr(args, "status", None),
@@ -68,6 +70,7 @@ def cmd_incidents_list(args: argparse.Namespace) -> None:
 
 def cmd_incidents_report(args: argparse.Namespace) -> None:
     db_path = args.db or settings.db_path
+    init_db(db_path)
     storage = StorageService(db_path)
     incident = storage.get_incident(args.id)
     if not incident:
