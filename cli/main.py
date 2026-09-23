@@ -17,6 +17,7 @@ from app.services.report_service import (
     generate_markdown_report,
     generate_xlsx_report,
 )
+from app.services.soar_forwarder import forward_incident
 from app.services.storage_service import StorageService
 
 
@@ -70,6 +71,28 @@ def cmd_incidents_list(args: argparse.Namespace) -> None:
         return
     for i in incidents:
         print(f"[{i['incident_id']}] [{i['severity'].upper()}] {i['title']}")
+
+
+def cmd_incidents_forward(args: argparse.Namespace) -> None:
+    db_path = args.db or settings.db_path
+    init_db(db_path)
+    storage = StorageService(db_path)
+    incident = storage.get_incident(args.id)
+    if not incident:
+        print(f"Incident {args.id} not found.", file=sys.stderr)
+        sys.exit(1)
+    alerts = storage.get_alerts_for_incident(incident.get("alert_ids", []))
+
+    result = forward_incident(
+        incident, alerts, args.webhook, timeout=args.timeout, retries=args.retries
+    )
+    if result.delivered:
+        print(f"Delivered {args.id} to {args.webhook} (HTTP {result.status_code}, "
+              f"{result.attempts} attempt(s)).")
+    else:
+        print(f"Failed to deliver {args.id} after {result.attempts} attempt(s): "
+              f"{result.error}", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_incidents_report(args: argparse.Namespace) -> None:
@@ -215,6 +238,15 @@ def main() -> None:
     p_ir.add_argument("--format", choices=["md", "json", "xlsx"], default="md")
     p_ir.add_argument("--output", help="Output file path")
     p_ir.set_defaults(func=cmd_incidents_report)
+
+    p_if = incidents_sub.add_parser(
+        "forward", help="Forward an incident to an external SOAR/webhook over REST"
+    )
+    p_if.add_argument("--id", required=True, help="Incident ID")
+    p_if.add_argument("--webhook", required=True, help="Receiver URL (SOAR intake / webhook)")
+    p_if.add_argument("--timeout", type=float, default=10.0, help="Per-request timeout, seconds")
+    p_if.add_argument("--retries", type=int, default=2, help="Extra attempts after the first")
+    p_if.set_defaults(func=cmd_incidents_forward)
 
     # demo
     p_demo = sub.add_parser("demo", help="Run full demo with sample logs")

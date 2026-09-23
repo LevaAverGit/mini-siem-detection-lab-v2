@@ -22,6 +22,7 @@ Built to demonstrate Python backend, security engineering, and SOC workflow skil
 - **CLI tool** — `ingest`, `demo`, `alerts list`, `incidents list`, `incidents report` commands
 - **200 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
 - **Structured reporting** — Markdown, JSON, and formatted Excel (`.xlsx`) incident reports
+- **Egress integration** — forward an incident to an external SOAR/webhook over REST, with timeout and retry
 
 ---
 
@@ -184,6 +185,9 @@ python -m cli.main incidents report --id INC-0001 --format md --output reports/I
 python -m cli.main incidents report --id INC-0001 --format json
 # Excel export: a Summary / Alerts / Timeline workbook, alerts coloured by severity
 python -m cli.main incidents report --id INC-0001 --format xlsx --output reports/INC-0001.xlsx
+
+# Forward an incident to an external SOAR / webhook over REST (POST JSON)
+python -m cli.main incidents forward --id INC-0001 --webhook https://soar.example/intake
 ```
 
 ---
