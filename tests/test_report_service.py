@@ -155,3 +155,47 @@ class TestMarkdownMitre:
         }
         md = generate_markdown_report(SAMPLE_INCIDENT, [alert_no_mitre])
         assert "not mapped" in md
+
+
+class TestXlsxReport:
+    def _wb(self):
+        from app.services.report_service import generate_xlsx_report
+        return generate_xlsx_report(SAMPLE_INCIDENT, SAMPLE_ALERTS)
+
+    def test_has_the_three_expected_sheets(self):
+        wb = self._wb()
+        assert wb.sheetnames == ["Summary", "Alerts", "Timeline"]
+
+    def test_summary_sheet_carries_incident_fields(self):
+        ws = self._wb()["Summary"]
+        flat = {ws.cell(row=r, column=1).value: ws.cell(row=r, column=2).value
+                for r in range(2, ws.max_row + 1)}
+        assert flat["Incident ID"] == "INC-0001"
+        assert flat["Severity"] == "CRITICAL"
+        assert flat["Score"] == "100/100"
+        # The alert count is computed, not copied -- guard it against drift.
+        assert flat["Alerts in incident"] == len(SAMPLE_ALERTS)
+
+    def test_alerts_sheet_has_one_row_per_alert(self):
+        ws = self._wb()["Alerts"]
+        # max_row includes the header, so data rows == max_row - 1.
+        assert ws.max_row - 1 == len(SAMPLE_ALERTS)
+        header = [c.value for c in ws[1]]
+        assert header[0] == "Rule ID"
+        assert "MITRE tactic" in header
+
+    def test_critical_alert_cell_is_filled_red(self):
+        ws = self._wb()["Alerts"]
+        # SAMPLE_ALERTS[0] is critical; its severity cell (col 3) must be filled,
+        # which is the visual cue an analyst relies on when skimming the export.
+        sev_cell = ws.cell(row=2, column=3)
+        assert sev_cell.value == "CRITICAL"
+        assert sev_cell.fill.fgColor.rgb.endswith("C0392B")
+
+    def test_workbook_round_trips_through_a_saved_file(self, tmp_path):
+        from openpyxl import load_workbook
+        path = tmp_path / "incident.xlsx"
+        self._wb().save(path)
+        reopened = load_workbook(path)
+        assert reopened.sheetnames == ["Summary", "Alerts", "Timeline"]
+        assert reopened["Timeline"].max_row - 1 == len(SAMPLE_INCIDENT["timeline"])

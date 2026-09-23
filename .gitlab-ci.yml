@@ -1,0 +1,31 @@
+# GitLab CI mirror of the GitHub Actions pipeline (.github/workflows/ci.yml).
+# The project runs the same two stages on either host: GitHub executes the
+# workflow file, GitLab executes this one. Keeping both in the repo shows the
+# pipeline is portable, not tied to one CI system.
+
+stages:
+  - test
+  - security
+
+default:
+  image: python:3.11-slim
+
+test:
+  stage: test
+  script:
+    - pip install -r requirements-dev.txt
+    - pytest tests/ -v
+    - pip install ruff
+    # Lint is advisory here, exactly as in the GitHub workflow.
+    - ruff check app/ cli/ tests/ || true
+
+security:
+  stage: security
+  # SAST and dependency findings are surfaced but do not fail the build, so a
+  # new advisory in a third-party package cannot block a merge on its own.
+  allow_failure: true
+  script:
+    - pip install bandit semgrep pip-audit
+    - bandit -r app cli || true
+    - semgrep --config p/python --config p/owasp-top-ten || true
+    - pip-audit -r requirements.txt || true

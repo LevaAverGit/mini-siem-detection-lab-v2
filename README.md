@@ -21,7 +21,7 @@ Built to demonstrate Python backend, security engineering, and SOC workflow skil
 - **SQLite persistence** — schema-first init, per-test isolation via `tmp_path`
 - **CLI tool** — `ingest`, `demo`, `alerts list`, `incidents list`, `incidents report` commands
 - **200 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
-- **Structured reporting** — Markdown and JSON incident reports
+- **Structured reporting** — Markdown, JSON, and formatted Excel (`.xlsx`) incident reports
 
 ---
 
@@ -182,6 +182,8 @@ python -m cli.main incidents list
 # Export incident report
 python -m cli.main incidents report --id INC-0001 --format md --output reports/INC-0001.md
 python -m cli.main incidents report --id INC-0001 --format json
+# Excel export: a Summary / Alerts / Timeline workbook, alerts coloured by severity
+python -m cli.main incidents report --id INC-0001 --format xlsx --output reports/INC-0001.xlsx
 ```
 
 ---

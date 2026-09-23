@@ -12,7 +12,11 @@ from app.services.detection_engine import load_rules, run_detections
 from app.services.incident_grouping_service import group_alerts, reset_incident_counter
 from app.services.ingestion_service import ingest_file
 from app.services.normalization_service import normalize_file
-from app.services.report_service import generate_json_report, generate_markdown_report
+from app.services.report_service import (
+    generate_json_report,
+    generate_markdown_report,
+    generate_xlsx_report,
+)
 from app.services.storage_service import StorageService
 
 
@@ -77,6 +81,16 @@ def cmd_incidents_report(args: argparse.Namespace) -> None:
         print(f"Incident {args.id} not found.", file=sys.stderr)
         sys.exit(1)
     alerts = storage.get_alerts_for_incident(incident.get("alert_ids", []))
+
+    # xlsx is binary, so it must be written to a file rather than printed.
+    if args.format == "xlsx":
+        if not args.output:
+            print("--output is required for xlsx format.", file=sys.stderr)
+            sys.exit(1)
+        os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+        generate_xlsx_report(incident, alerts).save(args.output)
+        print(f"Report saved to {args.output}")
+        return
 
     if args.format == "md":
         content = generate_markdown_report(incident, alerts)
@@ -198,7 +212,7 @@ def main() -> None:
 
     p_ir = incidents_sub.add_parser("report", help="Export incident report")
     p_ir.add_argument("--id", required=True, help="Incident ID")
-    p_ir.add_argument("--format", choices=["md", "json"], default="md")
+    p_ir.add_argument("--format", choices=["md", "json", "xlsx"], default="md")
     p_ir.add_argument("--output", help="Output file path")
     p_ir.set_defaults(func=cmd_incidents_report)
 
