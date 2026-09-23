@@ -37,7 +37,8 @@
         "defaults": {
           "unit": "short",
           "color": {
-            "mode": "text"
+            "mode": "fixed",
+            "fixedColor": "blue"
           }
         },
         "overrides": []
@@ -136,7 +137,8 @@
         "defaults": {
           "unit": "short",
           "color": {
-            "mode": "text"
+            "mode": "fixed",
+            "fixedColor": "orange"
           }
         },
         "overrides": []
@@ -185,7 +187,8 @@
         "defaults": {
           "unit": "short",
           "color": {
-            "mode": "text"
+            "mode": "fixed",
+            "fixedColor": "green"
           }
         },
         "overrides": []

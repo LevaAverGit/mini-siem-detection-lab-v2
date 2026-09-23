@@ -46,6 +46,44 @@ class TestCLIDemo:
         incidents = storage.list_incidents()
         assert len(incidents) >= 1
 
+    def test_demo_db_is_mount_safe(self, tmp_path: Path):
+        """The demo db must leave WAL mode so Grafana can read it read-only."""
+        import argparse
+        import sqlite3
+
+        from cli.main import cmd_demo
+
+        db_path = str(tmp_path / "demo_mount.db")
+        init_db(db_path)
+        reset_incident_counter()
+        cmd_demo(argparse.Namespace(db=db_path, rules="app/rules/default_rules.yml"))
+
+        conn = sqlite3.connect(db_path)
+        mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
+        conn.close()
+        assert mode == "delete"
+        # And no WAL sidecars left beside the file.
+        assert not os.path.exists(db_path + "-wal")
+
+    def test_finalize_readonly_snapshot_leaves_delete_mode(self, tmp_path: Path):
+        import sqlite3
+
+        from app.db.database import finalize_readonly_snapshot, get_connection
+
+        db_path = str(tmp_path / "snap.db")
+        conn = get_connection(db_path)  # opens in WAL
+        conn.execute("CREATE TABLE t (x INTEGER)")
+        conn.execute("INSERT INTO t VALUES (1)")
+        conn.commit()
+        conn.close()  # release before finalizing
+
+        finalize_readonly_snapshot(db_path)
+
+        check = sqlite3.connect(db_path)
+        assert check.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+        assert check.execute("SELECT x FROM t").fetchone()[0] == 1  # data intact
+        check.close()
+
 
 class TestCLIIngest:
     def test_ingest_linux_auth(self, tmp_path: Path, capsys):

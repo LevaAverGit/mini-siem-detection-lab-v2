@@ -6,7 +6,7 @@ import os
 import sys
 
 from app.core.config import settings
-from app.db.database import init_db
+from app.db.database import finalize_readonly_snapshot, init_db
 from app.models.schemas import SourceType
 from app.services.detection_engine import load_rules, run_detections
 from app.services.incident_grouping_service import group_alerts, reset_incident_counter
@@ -177,6 +177,10 @@ def cmd_demo(args: argparse.Namespace) -> None:
     incidents = group_alerts(alerts, all_events)
     storage.insert_incidents(incidents)
     print(f"Incidents created     : {len(incidents)}")
+
+    # Leave the demo db in a mount-safe journal mode so Grafana can read it from
+    # a read-only bind mount (see docker-compose.yml).
+    finalize_readonly_snapshot(db_path)
 
     if alerts:
         print()

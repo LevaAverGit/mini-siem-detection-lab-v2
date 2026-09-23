@@ -112,6 +112,8 @@ The pipeline ends where an analyst actually looks: a dashboard. This one is
 in `grafana/` and come up identically on any clone, with nothing clicked in by
 hand.
 
+![SOC Overview dashboard in Grafana](docs/img/grafana-soc-overview.png)
+
 ```bash
 make demo            # populate demo.db with alerts, incidents, events
 make dashboard-up    # start Grafana at http://127.0.0.1:3000
@@ -135,8 +137,8 @@ demo data.
   without a login, cannot edit), sign-up and phone-home off. See `SECURITY.md`
   for the threat model and the off-localhost warning.
 
-> The board renders when you run it locally; a static screenshot is not committed
-> yet. `make dashboard-up` and open **SOC Overview — mini-SIEM**.
+> The screenshot above is the board running on the bundled demo data. Reproduce
+> it with `make demo && make dashboard-up`, then open **SOC Overview — mini-SIEM**.
 
 ---
 
