@@ -1,0 +1,569 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Alerts",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT count(*) AS alerts FROM alerts",
+          "rawQueryText": "SELECT count(*) AS alerts FROM alerts",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "id": 1
+    },
+    {
+      "type": "stat",
+      "title": "Critical alerts",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT count(*) AS critical FROM alerts WHERE severity='critical'",
+          "rawQueryText": "SELECT count(*) AS critical FROM alerts WHERE severity='critical'",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "id": 2
+    },
+    {
+      "type": "stat",
+      "title": "Open incidents",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT count(*) AS incidents FROM incidents WHERE status='open'",
+          "rawQueryText": "SELECT count(*) AS incidents FROM incidents WHERE status='open'",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "id": 3
+    },
+    {
+      "type": "stat",
+      "title": "Events ingested",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT count(*) AS events FROM events",
+          "rawQueryText": "SELECT count(*) AS events FROM events",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "id": 4
+    },
+    {
+      "type": "piechart",
+      "title": "Alerts by severity",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT severity, count(*) AS value FROM alerts GROUP BY severity ORDER BY value DESC",
+          "rawQueryText": "SELECT severity, count(*) AS value FROM alerts GROUP BY severity ORDER BY value DESC",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "critical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "high"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "medium"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "low"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      },
+      "id": 5
+    },
+    {
+      "type": "barchart",
+      "title": "Alerts by MITRE ATT&CK tactic",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 8,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT mitre_tactic AS tactic, count(*) AS alerts FROM alerts WHERE mitre_tactic IS NOT NULL GROUP BY mitre_tactic ORDER BY alerts DESC",
+          "rawQueryText": "SELECT mitre_tactic AS tactic, count(*) AS alerts FROM alerts WHERE mitre_tactic IS NOT NULL GROUP BY mitre_tactic ORDER BY alerts DESC",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "always",
+        "legend": {
+          "showLegend": false
+        }
+      },
+      "id": 6
+    },
+    {
+      "type": "barchart",
+      "title": "Detection rule hit counts",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT rule_name AS rule, count(*) AS hits FROM alerts GROUP BY rule_name ORDER BY hits DESC",
+          "rawQueryText": "SELECT rule_name AS rule, count(*) AS hits FROM alerts GROUP BY rule_name ORDER BY hits DESC",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "always",
+        "legend": {
+          "showLegend": false
+        },
+        "xTickLabelMaxLength": 34
+      },
+      "id": 7
+    },
+    {
+      "type": "table",
+      "title": "Top source IPs by alert count",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT source_ip AS ip, count(*) AS alerts FROM alerts WHERE source_ip IS NOT NULL GROUP BY source_ip ORDER BY alerts DESC LIMIT 10",
+          "rawQueryText": "SELECT source_ip AS ip, count(*) AS alerts FROM alerts WHERE source_ip IS NOT NULL GROUP BY source_ip ORDER BY alerts DESC LIMIT 10",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {},
+      "id": 8
+    },
+    {
+      "type": "barchart",
+      "title": "Event volume by hour (across the log window)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT strftime('%Y-%m-%d %H:00', timestamp) AS hour, count(*) AS events FROM events GROUP BY hour ORDER BY hour",
+          "rawQueryText": "SELECT strftime('%Y-%m-%d %H:00', timestamp) AS hour, count(*) AS events FROM events GROUP BY hour ORDER BY hour",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "showValue": "always",
+        "legend": {
+          "showLegend": false
+        }
+      },
+      "id": 9
+    },
+    {
+      "type": "piechart",
+      "title": "Events by source type",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT source_type AS source, count(*) AS value FROM events GROUP BY source_type ORDER BY value DESC",
+          "rawQueryText": "SELECT source_type AS source, count(*) AS value FROM events GROUP BY source_type ORDER BY value DESC",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value"
+          ]
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        }
+      },
+      "id": 10
+    },
+    {
+      "type": "table",
+      "title": "Open incidents (by score)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "siem-sqlite"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "siem-sqlite"
+          },
+          "queryText": "SELECT incident_id AS incident, title, severity, score, status FROM incidents WHERE status='open' ORDER BY score DESC, severity DESC",
+          "rawQueryText": "SELECT incident_id AS incident, title, severity, score, status FROM incidents WHERE status='open' ORDER BY score DESC, severity DESC",
+          "queryType": "table",
+          "timeColumns": []
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {},
+      "id": 11
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "soc",
+    "siem",
+    "detection"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1y",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "SOC Overview — mini-SIEM",
+  "uid": "mini-siem-soc",
+  "version": 1,
+  "weekStart": ""
+}

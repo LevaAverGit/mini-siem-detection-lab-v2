@@ -1,0 +1,14 @@
+# Read-only SQLite datasource the dashboard queries the SIEM database through.
+# The db file is mounted read-only into the container (docker-compose.yml), and
+# editable:false keeps this file the source of truth, not the running UI.
+apiVersion: 1
+
+datasources:
+  - name: SIEM SQLite
+    uid: siem-sqlite
+    type: frser-sqlite-datasource
+    access: proxy
+    isDefault: true
+    jsonData:
+      path: /var/lib/siem/siem.db   # path inside the container
+    editable: false

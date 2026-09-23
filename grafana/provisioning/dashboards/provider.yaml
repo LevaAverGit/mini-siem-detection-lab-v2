@@ -1,0 +1,12 @@
+# Loads every dashboard JSON in grafana/dashboards as code, so a fresh clone
+# brings up the same board with one command. The file on disk stays the source
+# of truth: UI edits are disallowed and not persisted.
+apiVersion: 1
+
+providers:
+  - name: mini-siem
+    orgId: 1
+    type: file
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

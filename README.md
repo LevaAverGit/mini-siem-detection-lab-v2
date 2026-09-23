@@ -104,6 +104,41 @@ Incidents:
 
 ---
 
+## SOC dashboard (Grafana)
+
+The pipeline ends where an analyst actually looks: a dashboard. This one is
+**provisioned as code** — the datasource, the board, and every panel query live
+in `grafana/` and come up identically on any clone, with nothing clicked in by
+hand.
+
+```bash
+make demo            # populate demo.db with alerts, incidents, events
+make dashboard-up    # start Grafana at http://127.0.0.1:3000
+                     # open "SOC Overview — mini-SIEM" (opens without a login)
+make dashboard-down  # stop it
+```
+
+Eleven panels over the same detection data the CLI and API expose — alert and
+incident counts, alert distribution by severity, breakdown by MITRE ATT&CK
+tactic, detection-rule hit counts, top source IPs, event volume by hour across
+the log window, events by source type, and the open-incident queue by score.
+Every panel query is plain SQL against the SIEM database, verified against the
+demo data.
+
+- **Dashboards as code** — the datasource, the board (`grafana/dashboards/soc-overview.json`),
+  and every query are provisioned from files, not saved inside a running
+  instance. Reproducible and reviewable in a diff.
+- **Read-only** — the SIEM database is mounted `:ro`, so a panel query cannot
+  write back to the detection data.
+- **Hardened as a local tool** — bound to `127.0.0.1`, anonymous `Viewer` (opens
+  without a login, cannot edit), sign-up and phone-home off. See `SECURITY.md`
+  for the threat model and the off-localhost warning.
+
+> The board renders when you run it locally; a static screenshot is not committed
+> yet. `make dashboard-up` and open **SOC Overview — mini-SIEM**.
+
+---
+
 ## API Overview
 
 | Endpoint | Method | Description |

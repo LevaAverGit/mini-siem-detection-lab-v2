@@ -1,0 +1,40 @@
+# Grafana SOC dashboard for the mini-SIEM. Safe only bound to localhost.
+#
+#   make demo && make dashboard-up   # http://127.0.0.1:3000, opens without a login
+#   make dashboard-down
+#
+# Datasource, dashboard, and queries are all provisioned from grafana/, so this
+# comes up identically on any clone. Security notes and the off-localhost
+# warning live in SECURITY.md.
+
+services:
+  grafana:
+    image: grafana/grafana-oss:11.2.10
+    container_name: mini-siem-grafana
+    # Loopback only: a local analyst tool, never exposed to a network.
+    ports:
+      - "127.0.0.1:3000:3000"
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      # SQLite is not a built-in datasource; this community plugin adds it,
+      # pinned so a fresh pull cannot silently change the version.
+      GF_INSTALL_PLUGINS: "frser-sqlite-datasource 4.0.6"
+      # Dev-only local password, documented (see SECURITY.md). Set explicitly to
+      # skip Grafana's first-run forced-reset state, not to be a secret.
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      # Read-only anonymous access so the board opens without a login but cannot
+      # be edited; sign-up closed.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # No phone-home.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      # SIEM database, mounted READ-ONLY: a dashboard query can read rows but
+      # never write back to the detection pipeline's data.
+      - ./demo.db:/var/lib/siem/siem.db:ro
