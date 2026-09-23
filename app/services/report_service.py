@@ -182,6 +182,7 @@ def generate_xlsx_report(incident: dict, alerts: list[dict]) -> "Workbook":
     that do not read Markdown, which is what this covers.
     """
     from openpyxl import Workbook
+    from openpyxl.formatting.rule import CellIsRule, ColorScaleRule
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
 
@@ -224,6 +225,19 @@ def generate_xlsx_report(incident: dict, alerts: list[dict]) -> "Workbook":
     ws.column_dimensions["A"].width = 22
     ws.column_dimensions["B"].width = 70
 
+    # Alerts-by-severity breakdown computed with live Excel formulas, so the
+    # totals recalculate if an analyst edits the Alerts sheet by hand. COUNTIF
+    # references the Alerts sheet (created below); the Total row sums them.
+    ws.append(["", ""])
+    ws.append(["Alerts by severity", ""])
+    ws.cell(row=ws.max_row, column=1).font = Font(bold=True)
+    breakdown_start = ws.max_row + 1
+    for sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+        ws.append([sev, f'=COUNTIF(Alerts!C:C,"{sev}")'])
+    ws.append(["Total alerts", f"=SUM(B{breakdown_start}:B{ws.max_row})"])
+    ws.cell(row=ws.max_row, column=1).font = Font(bold=True)
+    ws.cell(row=ws.max_row, column=2).font = Font(bold=True)
+
     # --- Sheet 2: Alerts --------------------------------------------------- #
     ws = wb.create_sheet("Alerts")
     headers = [
@@ -255,6 +269,27 @@ def generate_xlsx_report(incident: dict, alerts: list[dict]) -> "Workbook":
     widths = [22, 34, 10, 7, 10, 16, 14, 18, 30, 12]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
+
+    # Conditional formatting on the Score column (D): a green->yellow->red colour
+    # scale grades every alert's score at a glance, and a rule flags the most
+    # severe (>=90) in bold red. This is Excel-native conditional formatting, so
+    # it re-evaluates live if the sheet is edited.
+    last_row = ws.max_row
+    if last_row >= 2:
+        cells = f"D2:D{last_row}"
+        ws.conditional_formatting.add(
+            cells,
+            ColorScaleRule(
+                start_type="num", start_value=0, start_color="63BE7B",
+                mid_type="num", mid_value=50, mid_color="FFEB84",
+                end_type="num", end_value=100, end_color="F8696B",
+            ),
+        )
+        ws.conditional_formatting.add(
+            cells,
+            CellIsRule(operator="greaterThanOrEqual", formula=["90"],
+                       font=Font(color="9C0006", bold=True)),
+        )
 
     # --- Sheet 3: Timeline ------------------------------------------------- #
     ws = wb.create_sheet("Timeline")

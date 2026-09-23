@@ -23,7 +23,7 @@ Built to demonstrate Python backend, security engineering, and SOC workflow skil
 - **SQLite persistence** — schema-first init, per-test isolation via `tmp_path`
 - **CLI tool** — `ingest`, `demo`, `alerts list`, `incidents list`, `incidents report` commands
 - **200 tests, 0 warnings** — unit tests for each service layer, API tests via `httpx.ASGITransport`
-- **Structured reporting** — Markdown, JSON, and formatted Excel (`.xlsx`) incident reports
+- **Structured reporting** — Markdown, JSON, and formatted Excel (`.xlsx`) incident reports; the workbook (openpyxl) styles headers, freezes panes, colours alerts by severity, applies a conditional-formatting colour scale to the score column, and computes an alerts-by-severity breakdown with live `COUNTIF`/`SUM` formulas
 - **Egress integration** — forward an incident to an external SOAR/webhook over REST, with timeout and retry
 
 ---

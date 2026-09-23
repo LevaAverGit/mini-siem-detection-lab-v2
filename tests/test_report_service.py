@@ -192,6 +192,20 @@ class TestXlsxReport:
         assert sev_cell.value == "CRITICAL"
         assert sev_cell.fill.fgColor.rgb.endswith("C0392B")
 
+    def test_summary_has_severity_breakdown_formulas(self):
+        ws = self._wb()["Summary"]
+        formulas = [c.value for row in ws.iter_rows() for c in row
+                    if isinstance(c.value, str) and c.value.startswith("=")]
+        assert any('COUNTIF(Alerts!C:C,"CRITICAL")' in f for f in formulas)
+        assert any(f.startswith("=SUM(") for f in formulas)  # live totals formula
+
+    def test_alerts_score_column_has_conditional_formatting(self):
+        ws = self._wb()["Alerts"]
+        ranges = " ".join(str(r) for r in ws.conditional_formatting)
+        assert "D2" in ranges  # colour scale + high-score rule on Score column
+        rule_count = sum(len(ws.conditional_formatting[r]) for r in ws.conditional_formatting)
+        assert rule_count >= 2
+
     def test_workbook_round_trips_through_a_saved_file(self, tmp_path):
         from openpyxl import load_workbook
         path = tmp_path / "incident.xlsx"
@@ -199,3 +213,8 @@ class TestXlsxReport:
         reopened = load_workbook(path)
         assert reopened.sheetnames == ["Summary", "Alerts", "Timeline"]
         assert reopened["Timeline"].max_row - 1 == len(SAMPLE_INCIDENT["timeline"])
+        # Formulas and conditional formatting must survive the save.
+        summary_formulas = [c.value for row in reopened["Summary"].iter_rows() for c in row
+                            if isinstance(c.value, str) and c.value.startswith("=")]
+        assert any(f.startswith("=SUM(") for f in summary_formulas)
+        assert "D2" in " ".join(str(r) for r in reopened["Alerts"].conditional_formatting)
