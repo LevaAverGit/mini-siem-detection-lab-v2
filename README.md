@@ -4,6 +4,8 @@
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-C1272D)
+![Grafana](https://img.shields.io/badge/Grafana-SOC%20dashboard-F46800?logo=grafana&logoColor=white)
+![OpenPyXL](https://img.shields.io/badge/OpenPyXL-XLSX%20reports-217346?logo=microsoftexcel&logoColor=white)
 
 A lab-grade detection pipeline that simulates a SOC monitoring workflow:
 event source → log ingestion → normalization → detection rules → alerts → incident grouping → report → analyst playbook.
